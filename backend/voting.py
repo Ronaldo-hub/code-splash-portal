@@ -1,6 +1,7 @@
-
 from quantum import generate_quantum_keypair, encrypt_vote, decrypt_vote, generate_vote_hash
 from blockchain import create_account, create_voting_asset, transfer_votes, submit_vote_to_blockchain, get_voting_results
+from smart_id import SmartIDVerification
+import time
 
 # Store active elections (in a real system, this would be in a database)
 active_elections = {}
@@ -11,14 +12,21 @@ vote_batches = {}
 
 def register_voter(voter_id):
     """
-    Register a new voter with quantum-resistant keys and Algorand account.
+    Register a new voter with smart ID verification, quantum-resistant keys, and Algorand account.
     
     Args:
-        voter_id: Unique identifier for the voter
+        voter_id: South African ID number
         
     Returns:
-        Voter credentials
+        Voter credentials or error message
     """
+    # First verify the ID
+    verifier = SmartIDVerification()
+    verification_result = verifier.validate_voter_eligibility(voter_id)
+    
+    if not verification_result["eligible"]:
+        raise ValueError(f"Voter not eligible: {verification_result.get('error', 'Unknown error')}")
+    
     # Check if voter is already registered
     if voter_id in registered_voters:
         return registered_voters[voter_id]
@@ -29,13 +37,15 @@ def register_voter(voter_id):
     # Generate quantum-resistant keypair
     quantum_keys = generate_quantum_keypair()
     
-    # Create voter record
+    # Create voter record with verification details
     voter = {
         "voterId": voter_id,
         "algoAddress": algo_account["address"],
         "algoMnemonic": algo_account["mnemonic"],
         "pqPublicKey": quantum_keys["public_key"],
-        "pqPrivateKey": quantum_keys["private_key"]
+        "pqPrivateKey": quantum_keys["private_key"],
+        "verified": True,
+        "verificationTimestamp": verification_result["verification"]["verification_timestamp"]
     }
     
     # Save voter

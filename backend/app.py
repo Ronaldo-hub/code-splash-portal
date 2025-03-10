@@ -1,10 +1,10 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
 
 # Import custom modules
 from voting import register_voter, create_election, add_proposal, cast_vote, submit_offline_vote, get_election_results
+from smart_id import SmartIDVerification
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -19,10 +19,14 @@ def register():
         return jsonify({"error": "voter_id is required"}), 400
     
     try:
-        # Call actual implementation
+        # Attempt to register voter with verification
         result = register_voter(voter_id)
         return jsonify(result)
+    except ValueError as e:
+        # Handle verification/eligibility errors
+        return jsonify({"error": str(e)}), 403
     except Exception as e:
+        # Handle other errors
         return jsonify({"error": str(e)}), 500
 
 @app.route('/create-election', methods=['POST'])

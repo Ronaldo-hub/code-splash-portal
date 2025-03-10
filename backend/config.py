@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 
@@ -18,3 +17,7 @@ QUANTUM_CIRCUIT_DEPTH = int(os.getenv("QUANTUM_CIRCUIT_DEPTH", "3"))
 # Application settings
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "t")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+
+# DHA API Configuration (mock values - would be set in production)
+DHA_API_KEY = os.getenv("DHA_API_KEY", "mock-api-key")
+DHA_API_URL = os.getenv("DHA_API_URL", "https://api.dha.gov.za/verify")
