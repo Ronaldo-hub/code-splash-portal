@@ -1,23 +1,13 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import time
+
+# Import custom modules
+from voting import register_voter, create_election, add_proposal, cast_vote, submit_offline_vote, get_election_results
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-
-# Import your custom modules here
-# from voting import register_voter, create_election, cast_vote, etc.
-
-# Mock data and functions for demonstration
-# Replace these with your actual implementation
-def mock_register_voter(voter_id):
-    return {
-        "voterId": voter_id,
-        "algoAddress": f"ALGO{hash(voter_id) % 10000}",
-        "algoMnemonic": "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12",
-        "pqPublicKey": f"pq_pub_{hash(voter_id) % 10000}",
-        "pqPrivateKey": f"pq_priv_{hash(voter_id) % 10000}",
-    }
 
 # Flask routes
 @app.route('/register', methods=['POST'])
@@ -28,14 +18,15 @@ def register():
     if not voter_id:
         return jsonify({"error": "voter_id is required"}), 400
     
-    # Call your actual implementation here
-    # result = register_voter(voter_id)
-    result = mock_register_voter(voter_id)
-    
-    return jsonify(result)
+    try:
+        # Call actual implementation
+        result = register_voter(voter_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/create-election', methods=['POST'])
-def create_election():
+def create_election_route():
     data = request.json
     
     # Extract and validate data
@@ -44,78 +35,81 @@ def create_election():
     total_votes = data.get('total_votes')
     multisig_admin = data.get('multisig_admin')
     
-    # Call your actual implementation
-    # result = create_new_election(creator_credentials, election_name, total_votes, multisig_admin)
+    if not creator_credentials or not election_name or not total_votes:
+        return jsonify({"error": "Missing required fields"}), 400
     
-    # Mock response
-    result = {
-        "assetId": hash(election_name) % 1000000,
-        "electionName": election_name,
-        "totalVotes": total_votes
-    }
+    try:
+        # Call actual implementation
+        result = create_election(creator_credentials, election_name, total_votes, multisig_admin)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/add-proposal', methods=['POST'])
+def add_proposal_route():
+    data = request.json
     
-    return jsonify(result)
+    # Extract and validate data
+    asset_id = data.get('asset_id')
+    proposal_name = data.get('proposal_name')
+    proposal_details = data.get('proposal_details')
+    
+    if not asset_id or not proposal_name:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        # Call actual implementation
+        result = add_proposal(asset_id, proposal_name, proposal_details)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/cast-vote', methods=['POST'])
-def cast():
+def cast_vote_route():
     data = request.json
     
-    # Call your actual implementation
-    # result = cast_vote(...)
+    # Extract and validate data
+    voter_credentials = data.get('voter_credentials')
+    asset_id = data.get('asset_id')
+    voting_power = data.get('voting_power')
+    proposal_name = data.get('proposal_name')
     
-    # Mock response
-    result = {
-        "batchId": f"batch_{hash(str(data)) % 10000}"
-    }
+    if not voter_credentials or not asset_id or not voting_power or not proposal_name:
+        return jsonify({"error": "Missing required fields"}), 400
     
-    return jsonify(result)
+    try:
+        # Call actual implementation
+        result = cast_vote(voter_credentials, asset_id, voting_power, proposal_name)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/offline-vote', methods=['POST'])
-def offline_vote():
+def offline_vote_route():
     data = request.json
     
-    # Call your actual implementation
-    # result = submit_offline_vote(...)
-    
-    # Mock response
+    # Extract and validate data
     voter_id = data.get('voter_id')
     vote_data = data.get('vote_data')
     
-    result = {
-        "voteHash": f"hash_{hash(str(vote_data)) % 10000}",
-        "batchId": f"offline_batch_{hash(voter_id) % 10000}"
-    }
+    if not voter_id or not vote_data:
+        return jsonify({"error": "Missing required fields"}), 400
     
-    return jsonify(result)
+    try:
+        # Call actual implementation
+        result = submit_offline_vote(voter_id, vote_data)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/results', methods=['GET'])
 def results():
-    # Call your actual implementation
-    # result = get_election_results()
-    
-    # Mock response
-    mock_results = [
-        {
-            "id": 1,
-            "name": "Presidential Election 2024",
-            "proposals": [
-                {"name": "Candidate A", "votes": 145},
-                {"name": "Candidate B", "votes": 108},
-                {"name": "Candidate C", "votes": 73},
-            ],
-        },
-        {
-            "id": 2,
-            "name": "Community Development Initiative",
-            "proposals": [
-                {"name": "Proposal 1", "votes": 85},
-                {"name": "Proposal 2", "votes": 112},
-                {"name": "Proposal 3", "votes": 65},
-            ],
-        }
-    ]
-    
-    return jsonify(mock_results)
+    try:
+        # Call actual implementation
+        result = get_election_results()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
