@@ -11,7 +11,7 @@ A quantum-resistant voting system built with React and Python Flask.
 ## Frontend Setup
 
 ```bash
-# Install dependencies
+# Install dependencies (using npm as the preferred package manager)
 npm install
 
 # Start development server
@@ -41,6 +41,13 @@ For local development, you can:
 
 1. Set `VITE_USE_MOCK_DATA=true` in your `.env.local` file to use mock data without running the backend
 2. Set `VITE_USE_MOCK_DATA=false` and run both frontend and backend to use the actual API
+
+## Package Manager
+
+This project uses npm as the preferred package manager. If you're experiencing issues with multiple lockfiles, you can:
+
+1. Use VS Code settings to set npm as the default: Add `"npm.packageManager": "npm"` to your settings.json
+2. Or delete any non-npm lockfiles (like bun.lockb) if you're not using them
 
 ## Building for Production
 
