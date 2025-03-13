@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { useVotingSystem } from "@/contexts/VotingSystemContext";
 import Layout from "@/components/Layout";
 import VoterQRCode from "@/components/VoterQRCode";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 const Register = () => {
   const { toast } = useToast();

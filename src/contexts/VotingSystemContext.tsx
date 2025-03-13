@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type Voter = {
+export type Voter = {
   voterId: string;
   algoAddress: string;
   algoMnemonic: string;
@@ -57,16 +56,13 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock implementation - these would connect to your real API
   const registerVoter = async (voterId: string): Promise<Voter> => {
     setLoading(true);
     setError(null);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock response
       const newVoter: Voter = {
         voterId,
         algoAddress: `ALGO${Math.random().toString(36).substring(2, 15)}`,
@@ -92,10 +88,8 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
     setError(null);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock response
       const newElection: Election = {
         ...electionData,
         assetId: Math.floor(Math.random() * 1000000),
@@ -117,10 +111,8 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
     setError(null);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock response
       const batchId = `batch_${Math.random().toString(36).substring(2, 15)}`;
       
       const newVote: Vote = {
@@ -146,10 +138,8 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
     setError(null);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock response
       const voteHash = `hash_${Math.random().toString(36).substring(2, 15)}`;
       const batchId = `offline_batch_${Math.random().toString(36).substring(2, 15)}`;
       

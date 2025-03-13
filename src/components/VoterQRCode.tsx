@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { CreditCard, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { encodeVoterForQR } from "@/utils/qrCodeUtils";
 
 interface VoterQRCodeProps {
   voterId: string;
@@ -20,11 +21,11 @@ const VoterQRCode: React.FC<VoterQRCodeProps> = ({
   onPrint,
   onDownload
 }) => {
-  // Create encoded data for QR code (JSON string with voter details)
-  const qrData = JSON.stringify({
-    id: voterId,
-    address: algoAddress,
-    timestamp: new Date().toISOString(),
+  // Create encoded data for QR code using our utility function
+  const qrData = encodeVoterForQR({
+    voterId,
+    algoAddress,
+    algoMnemonic: "" // We don't include the mnemonic in the QR code for security
   });
 
   // Function to handle printing
