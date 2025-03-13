@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { votingAPI } from '../services/api';
@@ -42,11 +43,65 @@ export function useAPI() {
     }
   };
 
+  // Mock data for demonstration purposes
+  const getMockElectionResults = () => {
+    return {
+      elections: [
+        {
+          id: 1001,
+          name: "National Healthcare Initiative",
+          date: "2023-11-15",
+          totalVoters: 1250,
+          turnout: 78.4,
+          proposals: [
+            { name: "Proposal A: Expand Coverage", votes: 534, percentage: 54.7 },
+            { name: "Proposal B: Reform Current System", votes: 312, percentage: 32.0 },
+            { name: "Proposal C: No Change", votes: 130, percentage: 13.3 }
+          ]
+        },
+        {
+          id: 1002,
+          name: "Urban Development Project",
+          date: "2023-12-05",
+          totalVoters: 856,
+          turnout: 65.2,
+          proposals: [
+            { name: "Plan 1: Green Spaces", votes: 286, percentage: 51.3 },
+            { name: "Plan 2: Commercial District", votes: 198, percentage: 35.5 },
+            { name: "Plan 3: Mixed Use", votes: 74, percentage: 13.2 }
+          ]
+        },
+        {
+          id: 1003,
+          name: "Educational Funding Allocation",
+          date: "2024-01-20",
+          totalVoters: 2100,
+          turnout: 82.1,
+          proposals: [
+            { name: "Option A: STEM Focus", votes: 843, percentage: 48.9 },
+            { name: "Option B: Arts & Humanities", votes: 512, percentage: 29.7 },
+            { name: "Option C: Equal Distribution", votes: 369, percentage: 21.4 }
+          ]
+        }
+      ]
+    };
+  };
+
+  // Function to get election results
+  const getElectionResults = async () => {
+    return callAPI(
+      votingAPI.getResults,
+      getMockElectionResults(),
+      "Failed to fetch election results"
+    );
+  };
+
   return {
     loading,
     error,
     callAPI,
     clearError: () => setError(null),
     votingAPI,
+    getElectionResults
   };
 }
