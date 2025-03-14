@@ -1,6 +1,7 @@
 
 from typing import Dict, Optional
 import requests
+import time  # Add missing time import
 from config import DHA_API_KEY, DHA_API_URL
 
 class SmartIDVerification:
@@ -65,4 +66,3 @@ class SmartIDVerification:
             "eligible": True,
             "verification": verification_result
         }
-
