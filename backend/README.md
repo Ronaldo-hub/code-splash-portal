@@ -12,12 +12,38 @@ This directory contains the Python backend for the Quantum Voting System.
 
 ## Setup Instructions
 
-1. Create a virtual environment:
+### 1. Python Installation
+
+If you get a "python command not found" error, you may need to:
+
+- Check if Python is installed using `python3 --version` or `python --version`
+- If not installed, install Python:
+  ```bash
+  # For Ubuntu/Debian
+  sudo apt-get install python3
+  
+  # For Fedora
+  sudo dnf install python3
+  
+  # For macOS with Homebrew
+  brew install python
+  
+  # For Windows
+  # Download and install from https://www.python.org/downloads/
+  ```
+
+### 2. Virtual Environment Setup
+
+Create a virtual environment using one of these commands:
 ```bash
+# If 'python' works on your system
 python -m venv venv
+
+# If you need to use python3 explicitly
+python3 -m venv venv
 ```
 
-2. Activate the virtual environment:
+Activate the virtual environment:
 ```bash
 # On Windows
 venv\Scripts\activate
@@ -26,21 +52,29 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-3. Install dependencies:
+### 3. Install dependencies:
 ```bash
+# If pip works
 pip install -r requirements.txt
+
+# If you need to use pip3
+pip3 install -r requirements.txt
 ```
 
-4. Create a .env file:
+### 4. Create a .env file:
 ```bash
 cp .env.example .env
 ```
 
-5. Edit the .env file with your configuration settings.
+### 5. Edit the .env file with your configuration settings.
 
-6. Run the Flask server:
+### 6. Run the Flask server:
 ```bash
+# If python works
 python app.py
+
+# If you need to use python3
+python3 app.py
 ```
 
 The server will start on http://localhost:5000 by default.
