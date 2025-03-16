@@ -32,6 +32,26 @@ If you get a "python command not found" error, you may need to:
   # Download and install from https://www.python.org/downloads/
   ```
 
+#### Important Note for Python 3.12 Users
+If you encounter errors about missing 'distutils' module, you need to install it separately as it's no longer included in Python 3.12:
+
+```bash
+# For Ubuntu/Debian
+sudo apt-get install python3.12-distutils
+
+# For Fedora
+sudo dnf install python3.12-devel
+
+# For macOS with Homebrew
+# This should be included with Homebrew's Python
+
+# For Windows
+# Re-run the Python installer and select "Modify", then ensure "pip" and 
+# "Development Libraries" are selected to install
+```
+
+Alternatively, you can use Python 3.11 or earlier versions which include distutils by default.
+
 ### 2. Virtual Environment Setup
 
 Create a virtual environment using one of these commands:
@@ -99,3 +119,4 @@ The server will start on http://localhost:5000 by default.
 ## Testing
 
 For testing, you can use the mock data mode in the frontend by setting `VITE_USE_MOCK_DATA=true` in the frontend's `.env.local` file.
+
