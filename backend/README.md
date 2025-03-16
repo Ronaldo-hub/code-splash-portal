@@ -1,4 +1,5 @@
 
+
 # Quantum Voting System Backend
 
 This directory contains the Python backend for the Quantum Voting System.
@@ -31,6 +32,32 @@ If you get a "python command not found" error, you may need to:
   # For Windows
   # Download and install from https://www.python.org/downloads/
   ```
+
+#### Installing Python 3.11 in GitHub Codespaces
+
+If you need Python 3.11 specifically (which is recommended for this project), you can install it in GitHub Codespaces:
+
+```bash
+# Update package lists
+sudo apt-get update
+
+# Install required dependencies
+sudo apt-get install -y build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev \
+liblzma-dev
+
+# Download and install Python 3.11
+wget https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tgz
+tar -xf Python-3.11.4.tgz
+cd Python-3.11.4
+./configure --enable-optimizations
+make -j$(nproc)
+sudo make altinstall
+
+# Verify installation
+python3.11 --version
+```
 
 #### Important Note for Python 3.12 Users
 If you encounter errors about missing 'distutils' module, you need to install it separately as it's no longer included in Python 3.12:
@@ -154,3 +181,4 @@ If you encounter package installation errors in GitHub Codespaces:
    pip install qiskit==0.43.0 --no-deps
    pip install -r requirements.txt
    ```
+
