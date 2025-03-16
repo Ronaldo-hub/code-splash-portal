@@ -36,8 +36,9 @@ If you get a "python command not found" error, you may need to:
 If you encounter errors about missing 'distutils' module, you need to install it separately as it's no longer included in Python 3.12:
 
 ```bash
-# For Ubuntu/Debian
-sudo apt-get install python3.12-distutils
+# For Ubuntu/Debian (including GitHub Codespaces)
+sudo apt-get update
+sudo apt-get install python3.12-distutils python3.12-dev
 
 # For Fedora
 sudo dnf install python3.12-devel
@@ -50,7 +51,16 @@ sudo dnf install python3.12-devel
 # "Development Libraries" are selected to install
 ```
 
-Alternatively, you can use Python 3.11 or earlier versions which include distutils by default.
+**GitHub Codespaces Alternative Solution**: If you continue to have issues with Python 3.12 in Codespaces, you can switch to Python 3.11:
+
+```bash
+# Check available Python versions
+ls /usr/bin/python*
+
+# Use Python 3.11 instead
+python3.11 -m venv venv
+source venv/bin/activate
+```
 
 ### 2. Virtual Environment Setup
 
@@ -61,6 +71,9 @@ python -m venv venv
 
 # If you need to use python3 explicitly
 python3 -m venv venv
+
+# If using Python 3.11 specifically (recommended for compatibility)
+python3.11 -m venv venv
 ```
 
 Activate the virtual environment:
@@ -68,7 +81,7 @@ Activate the virtual environment:
 # On Windows
 venv\Scripts\activate
 
-# On macOS/Linux
+# On macOS/Linux and GitHub Codespaces
 source venv/bin/activate
 ```
 
@@ -120,3 +133,24 @@ The server will start on http://localhost:5000 by default.
 
 For testing, you can use the mock data mode in the frontend by setting `VITE_USE_MOCK_DATA=true` in the frontend's `.env.local` file.
 
+## Troubleshooting
+
+If you encounter package installation errors in GitHub Codespaces:
+
+1. Try using Python 3.11 instead of 3.12:
+   ```bash
+   python3.11 -m venv venv
+   source venv/bin/activate
+   ```
+
+2. If specific packages fail to install, you may need to install build dependencies:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install build-essential libffi-dev
+   ```
+
+3. For qiskit-specific issues, try installing it separately:
+   ```bash
+   pip install qiskit==0.43.0 --no-deps
+   pip install -r requirements.txt
+   ```
