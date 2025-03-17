@@ -3,12 +3,45 @@
 
 A quantum-resistant voting system built with React and Python Flask.
 
+## GitHub Codespaces Development
+
+This project is configured for GitHub Codespaces, which provides a complete development environment in the cloud.
+
+### Using Codespaces
+
+1. Click the green "Code" button in your GitHub repository
+2. Select "Open with Codespaces"
+3. Click "New codespace"
+4. Wait for the environment to set up (this may take a few minutes)
+
+When the codespace is ready, you'll have Python 3.11 and Node.js already installed.
+
+### Running the Application in Codespaces
+
+Open two terminal windows in your codespace:
+
+**Terminal 1 (Backend)**:
+```bash
+cd backend
+source venv/bin/activate
+python app.py
+```
+
+**Terminal 2 (Frontend)**:
+```bash
+npm run dev
+```
+
+The frontend will be available on port 5173 and the backend on port 5000. Codespaces will prompt you to open these in your browser or forward them to your local machine.
+
 ## Project Structure
 
 - `/src` - React frontend code
 - `/backend` - Python Flask backend code
 
-## Frontend Setup
+## Manual Setup
+
+### Frontend Setup
 
 ```bash
 # Install dependencies (using npm as the preferred package manager)
@@ -18,7 +51,7 @@ npm install
 npm run dev
 ```
 
-## Backend Setup
+### Backend Setup
 
 ```bash
 # Navigate to backend directory
