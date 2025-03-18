@@ -10,11 +10,14 @@ python -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
+echo "Backend packages installed:"
+pip list
 deactivate
 
 # Set up frontend
 cd /workspaces/$(basename $(pwd))
 npm install
+echo "Frontend packages installed"
 
 echo "Setup completed successfully!"
 echo "To run the backend:"
