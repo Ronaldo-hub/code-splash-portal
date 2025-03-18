@@ -9,7 +9,15 @@ cd /workspaces/$(basename $(pwd))/backend
 # Check if venv exists, if not create it
 if [ ! -d "venv" ]; then
     echo "Creating new Python virtual environment..."
-    python -m venv venv
+    # Try different Python commands until one works
+    if command -v python3 &> /dev/null; then
+        python3 -m venv venv
+    elif command -v python &> /dev/null; then
+        python -m venv venv
+    else
+        echo "ERROR: Python not found. Please install Python 3.x"
+        exit 1
+    fi
 else
     echo "Virtual environment already exists."
 fi
@@ -28,7 +36,17 @@ else
     echo "ERROR: Virtual environment activation file not found!"
     echo "Trying to create a new virtual environment..."
     rm -rf venv
-    python -m venv venv
+    
+    # Try different Python commands
+    if command -v python3 &> /dev/null; then
+        python3 -m venv venv
+    elif command -v python &> /dev/null; then
+        python -m venv venv
+    else
+        echo "ERROR: Python not found. Please install Python 3.x"
+        exit 1
+    fi
+    
     if [ -f "venv/bin/activate" ]; then
         source venv/bin/activate
         pip install --upgrade pip
