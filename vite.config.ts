@@ -21,4 +21,25 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Increase the warning limit to avoid unnecessary warnings
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        // Configure manual chunks to better split the code
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: [
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-label',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-progress',
+            '@radix-ui/react-hover-card'
+          ],
+          charts: ['recharts'],
+          forms: ['react-hook-form', 'zod', '@hookform/resolvers']
+        }
+      }
+    }
+  }
 }));
