@@ -1,7 +1,11 @@
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, LogOut } from "lucide-react";
+import { useBetaAccess } from "@/contexts/BetaAccessContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,6 +14,14 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  const { revokeBetaAccess } = useBetaAccess();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const handleLogout = () => {
+    revokeBetaAccess();
+    setLogoutDialogOpen(false);
+    toast.success("Beta access revoked");
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -57,6 +69,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               Results
             </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLogoutDialogOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              <span className="text-sm">Exit Beta</span>
+            </Button>
           </nav>
           
           <div className="md:hidden">
@@ -88,6 +109,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exit Beta Testing</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to exit beta testing? You'll need to enter the password again to regain access.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleLogout}>Exit Beta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
