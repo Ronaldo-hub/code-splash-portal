@@ -6,6 +6,7 @@ export type Voter = {
   algoMnemonic: string;
   pqPublicKey?: string;
   pqPrivateKey?: string;
+  walletBalance?: number; // Add wallet balance field
 };
 
 type Election = {
@@ -43,6 +44,9 @@ interface VotingSystemContextType {
   submitOfflineVote: (offlineVoteData: Omit<OfflineVote, "voteHash" | "batchId">) => Promise<{ voteHash: string; batchId: string }>;
   setCurrentVoter: (voter: Voter | null) => void;
   clearError: () => void;
+  // New wallet functions
+  addFunds: (amount: number) => Promise<void>;
+  getWalletBalance: () => number;
 }
 
 const VotingSystemContext = createContext<VotingSystemContextType | undefined>(undefined);
@@ -162,6 +166,47 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const clearError = () => setError(null);
 
+  // New function to add funds to the current voter's wallet
+  const addFunds = async (amount: number): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      if (!currentVoter) {
+        throw new Error("No voter is currently logged in");
+      }
+      
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the current voter's wallet balance
+      const updatedVoter = {
+        ...currentVoter,
+        walletBalance: (currentVoter.walletBalance || 0) + amount
+      };
+      
+      // Update current voter
+      setCurrentVoter(updatedVoter);
+      
+      // Update in registered voters list as well
+      setRegisteredVoters(prev => 
+        prev.map(voter => 
+          voter.voterId === updatedVoter.voterId ? updatedVoter : voter
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add funds");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to get current wallet balance
+  const getWalletBalance = (): number => {
+    return currentVoter?.walletBalance || 0;
+  };
+
   const value = {
     currentVoter,
     registeredVoters,
@@ -176,6 +221,9 @@ export const VotingSystemProvider: React.FC<{ children: ReactNode }> = ({ childr
     submitOfflineVote,
     setCurrentVoter,
     clearError,
+    // Add new wallet functions
+    addFunds,
+    getWalletBalance,
   };
 
   return (

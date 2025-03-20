@@ -56,6 +56,15 @@ export const votingAPI = {
     const response = await api.get('/results');
     return response.data;
   },
+  
+  // Fund wallet
+  fundWallet: async (walletAddress: string, amount: number) => {
+    const response = await api.post('/fund-wallet', {
+      wallet_address: walletAddress,
+      amount: amount,
+    });
+    return response.data;
+  },
 };
 
 export default api;

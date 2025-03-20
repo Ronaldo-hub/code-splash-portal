@@ -13,6 +13,7 @@ import Home from "./pages/Home"
 import { Toaster } from "@/components/ui/sonner"
 import Index from "./pages/Index"
 import NotFound from "./pages/NotFound"
+import WalletFunding from "./pages/WalletFunding"
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/cast-vote" element={<CastVote />} />
             <Route path="/offline-vote" element={<OfflineVote />} />
             <Route path="/results" element={<Results />} />
+            <Route path="/wallet" element={<WalletFunding />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
