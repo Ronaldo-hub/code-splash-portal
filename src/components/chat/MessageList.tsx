@@ -18,10 +18,16 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isTyping }) => {
   }, [messages, isTyping]);
 
   return (
-    <div className="flex flex-col space-y-4 h-[50vh] overflow-y-auto p-4 bg-muted/50 rounded-lg">
-      {messages.map((message, index) => (
-        <ChatMessage key={index} message={message} />
-      ))}
+    <div className="flex flex-col space-y-2 h-[50vh] overflow-y-auto p-4 bg-muted/50 rounded-lg">
+      {messages.length === 0 ? (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          No messages yet. Start typing to chat with the AI assistant.
+        </div>
+      ) : (
+        messages.map((message, index) => (
+          <ChatMessage key={index} message={message} />
+        ))
+      )}
       {isTyping && <TypingIndicator />}
       <div ref={messagesEndRef} />
     </div>
