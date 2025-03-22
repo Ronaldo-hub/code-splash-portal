@@ -40,11 +40,7 @@ const AIAssistant = () => {
         // Use a small model for text generation with properly typed options
         const textGenerator = await pipeline(
           "text-generation",
-          "Xenova/distilgpt2",
-          { 
-            quantized: false,
-            progress_callback: undefined 
-          }
+          "Xenova/distilgpt2"
         );
         
         if (isMounted) {
