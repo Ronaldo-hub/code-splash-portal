@@ -1,7 +1,7 @@
 
 import React, { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShieldCheck, LogOut } from "lucide-react";
+import { ShieldCheck, LogOut, Bot } from "lucide-react";
 import { useBetaAccess } from "@/contexts/BetaAccessContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`text-sm ${isActive('/results') ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Results
+            </Link>
+            <Link 
+              to="/ai-assistant" 
+              className={`text-sm ${isActive('/ai-assistant') ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <Bot className="h-4 w-4 inline mr-1" />
+              AI Assistant
             </Link>
             <Button 
               variant="ghost" 

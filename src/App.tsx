@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner"
 import Index from "./pages/Index"
 import NotFound from "./pages/NotFound"
 import WalletFunding from "./pages/WalletFunding"
+import AIAssistant from "./pages/AIAssistant"
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/offline-vote" element={<OfflineVote />} />
             <Route path="/results" element={<Results />} />
             <Route path="/wallet" element={<WalletFunding />} />
+            <Route path="/ai-assistant" element={<AIAssistant />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Wallet } from "lucide-react";
+import { Wallet, Bot } from "lucide-react";
 
 const Index = () => {
   return (
@@ -14,7 +14,7 @@ const Index = () => {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-4xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 w-full max-w-5xl">
         <Card>
           <CardHeader>
             <CardTitle>Register to Vote</CardTitle>
@@ -74,6 +74,24 @@ const Index = () => {
           <CardFooter>
             <Button asChild className="w-full">
               <Link to="/wallet">Fund Now</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              AI Assistant
+            </CardTitle>
+            <CardDescription>Get help with questions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">Chat with our AI assistant to learn about blockchain voting and get answers to common questions.</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/ai-assistant">Chat Now</Link>
             </Button>
           </CardFooter>
         </Card>
