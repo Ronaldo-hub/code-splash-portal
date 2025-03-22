@@ -37,11 +37,14 @@ const AIAssistant = () => {
     const loadModel = async () => {
       try {
         toast.info("Loading AI assistant model...");
-        // Use a small model for text generation
+        // Use a small model for text generation with properly typed options
         const textGenerator = await pipeline(
           "text-generation",
           "Xenova/distilgpt2",
-          { max_new_tokens: 100 }
+          { 
+            quantized: false,
+            progress_callback: undefined 
+          }
         );
         
         if (isMounted) {
@@ -122,7 +125,10 @@ const AIAssistant = () => {
         response = predefinedResponse;
       } else if (model) {
         // Use the model for other questions
-        const result = await model(userMessage.content);
+        const result = await model(userMessage.content, {
+          max_new_tokens: 100,
+          temperature: 0.7
+        });
         response = result[0].generated_text.replace(userMessage.content, "").trim();
         
         // Fallback if model returns empty or nonsensical response
