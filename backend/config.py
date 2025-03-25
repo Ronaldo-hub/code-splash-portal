@@ -33,6 +33,6 @@ ERNIE_API_KEY = 'your_api_key_here'
 
 # Pera Wallet configuration
 PERA_WALLET_ADDRESS = os.getenv(
-    "PERA_WALLET_ADDRESS", "your_pera_wallet_address_here")
+    "PERA_WALLET_ADDRESS", "AL4SNGDOVW36QSIHSJWQ4Z3AKKQBPS2IRJM6DVAKW7LMDLPCIE6EVI6J7E")
 PERA_WALLET_MNEMONIC = os.getenv(
-    "PERA_WALLET_MNEMONIC", "your_pera_wallet_mnemonic_here")
+    "PERA_WALLET_MNEMONIC", "better	loyal	hover	giraffe	run	rule	spice	stove	antenna	wide	nice	title	rubber	net	caution	want	problem	glove	sing	bundle	shrug	truly	gadget	above	dawn")
