@@ -1,5 +1,9 @@
 import os
 from dotenv import load_dotenv
+from flask import Flask, jsonify
+from algosdk import account, transaction
+from algosdk.v2client import algod
+from algosdk.mnemonic import to_private_key
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -37,6 +41,13 @@ PERA_WALLET_ADDRESS = os.getenv(
 PERA_WALLET_MNEMONIC = os.getenv(
     "PERA_WALLET_MNEMONIC", "better	loyal	hover	giraffe	run	rule	spice	stove	antenna	wide	nice	title	rubber	net	caution	want	problem	glove	sing	bundle	shrug	truly	gadget	above	dawn")
 
+# Registered wallet for the specific cause
+REGISTERED_CAUSE_WALLET_ADDRESS = "YOUR_REGISTERED_CAUSE_WALLET_ADDRESS"
+REGISTERED_CAUSE_WALLET_MNEMONIC = "YOUR_REGISTERED_CAUSE_WALLET_MNEMONIC"
+
+# Algorand client setup
+algod_client = algod.AlgodClient(ALGORAND_ALGOD_TOKEN, ALGORAND_ALGOD_ADDRESS)
+
 
 def get_voter_address():
     """
@@ -44,5 +55,70 @@ def get_voter_address():
     """
     return PERA_WALLET_ADDRESS
 
-# Example usage:
-# print("Use this address to cast your vote:", get_voter_address())
+
+def fund_voter_wallet(voter_wallet_address):
+    """
+    Sends a small amount of the specialized token (ASA) to the voter's wallet.
+    """
+    try:
+        # Convert mnemonic to private key
+        private_key = to_private_key(REGISTERED_CAUSE_WALLET_MNEMONIC)
+        # Get suggested transaction parameters
+        params = algod_client.suggested_params()
+        # Define the ASA ID (replace with your ASA ID)
+        asa_id = 123456  # Replace with the actual ASA ID
+        # Create an asset transfer transaction
+        txn = transaction.AssetTransferTxn(
+            sender=REGISTERED_CAUSE_WALLET_ADDRESS,
+            receiver=voter_wallet_address,
+            amt=10,  # Amount of the token to send
+            index=asa_id,  # ASA ID
+            sp=params
+        )
+        # Sign the transaction
+        signed_txn = txn.sign(private_key)
+        # Submit the transaction
+        txid = algod_client.send_transaction(signed_txn)
+        return {"success": True, "txid": txid}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+app = Flask(__name__)
+
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """
+    Endpoint to confirm the backend is connected.
+    """
+    return jsonify({"status": "Backend is connected", "wallet_address": get_voter_address()})
+
+
+@app.route('/api/fund-voter/<voter_wallet>', methods=['POST'])
+def fund_voter(voter_wallet):
+    """
+    API endpoint to fund a voter's wallet.
+    """
+    result = fund_voter_wallet(voter_wallet)
+    return jsonify(result)
+
+
+@app.route('/api/vote-count', methods=['GET'])
+def get_vote_count():
+    """
+    API endpoint to retrieve the number of votes recorded.
+    """
+    try:
+        # Replace this with actual logic to fetch vote count
+        # For demonstration, we'll assume votes are stored in a database or smart contract
+        # Example: Fetch vote count from the blockchain or database
+        vote_count = 42  # Replace with actual logic to fetch vote count
+        return jsonify({"success": True, "vote_count": vote_count})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# Run the Flask app to test the endpoint
+if __name__ == "__main__":
+    app.run(debug=True)

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting App</title>
+</head>
+<body>
+    <h1>Voting App</h1>
+    <p id="backend-status">Checking backend connection...</p>
+    <p id="vote-count">Fetching vote count...</p>
+
+    <script>
+        // Fetch backend status
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backend-status').innerText = 
+                    `${data.status}. Wallet Address: ${data.wallet_address}`;
+            })
+            .catch(error => {
+                document.getElementById('backend-status').innerText = 
+                    "Failed to connect to the backend.";
+                console.error("Error:", error);
+            });
+
+        // Fetch vote count from the backend
+        fetch('/api/vote-count')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('vote-count').innerText = 
+                        `Total Votes Recorded: ${data.vote_count}`;
+                } else {
+                    document.getElementById('vote-count').innerText = 
+                        "Failed to fetch vote count.";
+                }
+            })
+            .catch(error => {
+                document.getElementById('vote-count').innerText = 
+                    "Failed to connect to the backend.";
+                console.error("Error:", error);
+            });
+    </script>
+</body>
+</html>
