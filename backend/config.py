@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Algorand configuration
-ALGORAND_ALGOD_ADDRESS = os.getenv("ALGORAND_ALGOD_ADDRESS", "https://testnet-api.algonode.cloud")
+ALGORAND_ALGOD_ADDRESS = os.getenv(
+    "ALGORAND_ALGOD_ADDRESS", "https://testnet-api.algonode.cloud")
 ALGORAND_ALGOD_TOKEN = os.getenv("ALGORAND_ALGOD_TOKEN", "")
-ALGORAND_INDEXER_ADDRESS = os.getenv("ALGORAND_INDEXER_ADDRESS", "https://testnet-idx.algonode.cloud")
+ALGORAND_INDEXER_ADDRESS = os.getenv(
+    "ALGORAND_INDEXER_ADDRESS", "https://testnet-idx.algonode.cloud")
 ALGORAND_INDEXER_TOKEN = os.getenv("ALGORAND_INDEXER_TOKEN", "")
 
 # Quantum security parameters
@@ -21,3 +23,16 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 # DHA API Configuration (mock values - would be set in production)
 DHA_API_KEY = os.getenv("DHA_API_KEY", "mock-api-key")
 DHA_API_URL = os.getenv("DHA_API_URL", "https://api.dha.gov.za/verify")
+
+# Configuration file for API keys
+
+# Baidu Ernie X1 API key
+ERNIE_API_KEY = 'your_api_key_here'
+
+# Add other API keys here as needed
+
+# Pera Wallet configuration
+PERA_WALLET_ADDRESS = os.getenv(
+    "PERA_WALLET_ADDRESS", "your_pera_wallet_address_here")
+PERA_WALLET_MNEMONIC = os.getenv(
+    "PERA_WALLET_MNEMONIC", "your_pera_wallet_mnemonic_here")
