@@ -36,3 +36,13 @@ PERA_WALLET_ADDRESS = os.getenv(
     "PERA_WALLET_ADDRESS", "AL4SNGDOVW36QSIHSJWQ4Z3AKKQBPS2IRJM6DVAKW7LMDLPCIE6EVI6J7E")
 PERA_WALLET_MNEMONIC = os.getenv(
     "PERA_WALLET_MNEMONIC", "better	loyal	hover	giraffe	run	rule	spice	stove	antenna	wide	nice	title	rubber	net	caution	want	problem	glove	sing	bundle	shrug	truly	gadget	above	dawn")
+
+
+def get_voter_address():
+    """
+    Returns the Pera Wallet address for voters to use.
+    """
+    return PERA_WALLET_ADDRESS
+
+# Example usage:
+# print("Use this address to cast your vote:", get_voter_address())
