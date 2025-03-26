@@ -10,6 +10,26 @@
     <p id="backend-status">Checking backend connection...</p>
     <p id="vote-count">Fetching vote count...</p>
 
+    <h2>Fund Voter Wallet</h2>
+    <form id="fund-wallet-form">
+        <label for="wallet-address">Voter Wallet Address:</label>
+        <input type="text" id="wallet-address" required>
+        <button type="submit">Fund Wallet</button>
+    </form>
+    <p id="fund-status"></p>
+
+    <h2>Cast Vote</h2>
+    <form id="cast-vote-form">
+        <label for="voter-address">Voter Address:</label>
+        <input type="text" id="voter-address" required>
+        <label for="proposal-name">Proposal Name:</label>
+        <input type="text" id="proposal-name" required>
+        <label for="voting-power">Voting Power:</label>
+        <input type="number" id="voting-power" required>
+        <button type="submit">Cast Vote</button>
+    </form>
+    <p id="vote-status"></p>
+
     <script>
         // Fetch backend status
         fetch('/api/status')
@@ -41,6 +61,63 @@
                     "Failed to connect to the backend.";
                 console.error("Error:", error);
             });
+
+        // Handle fund wallet form submission
+        document.getElementById('fund-wallet-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const walletAddress = document.getElementById('wallet-address').value;
+
+            fetch(`/api/fund-voter/${walletAddress}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('fund-status').innerText = 
+                            `Wallet funded successfully. Transaction ID: ${data.txid}`;
+                    } else {
+                        document.getElementById('fund-status').innerText = 
+                            `Failed to fund wallet: ${data.error}`;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('fund-status').innerText = 
+                        "Failed to connect to the backend.";
+                    console.error("Error:", error);
+                });
+        });
+
+        // Handle cast vote form submission
+        document.getElementById('cast-vote-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const voterAddress = document.getElementById('voter-address').value;
+            const proposalName = document.getElementById('proposal-name').value;
+            const votingPower = parseInt(document.getElementById('voting-power').value);
+
+            fetch('/cast-vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    voter_credentials: voterAddress,
+                    proposal_name: proposalName,
+                    voting_power: votingPower,
+                    asset_id: 123456 // Replace with your ASA ID
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('vote-status').innerText = 
+                            `Failed to cast vote: ${data.error}`;
+                    } else {
+                        document.getElementById('vote-status').innerText = 
+                            "Vote cast successfully!";
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('vote-status').innerText = 
+                        "Failed to connect to the backend.";
+                    console.error("Error:", error);
+                });
+        });
     </script>
 </body>
 </html>
