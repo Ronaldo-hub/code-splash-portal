@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { 
@@ -13,24 +12,21 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, Copy, ExternalLink, QrCode, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import TestTokenReceiver from "@/components/TestTokenReceiver";
 
 const MandateWallet = () => {
   const [votingPower, setVotingPower] = useState(0);
   const [totalVotingPower, setTotalVotingPower] = useState(1000);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Wallet details - in a real app, these would be fetched from backend
   const walletAddress = "ALGO7QNTVXZWDCBUDMJG5QO6L6ZFEKMPWOKBKJT5ZQOM6NMHOWL3RYPJXA";
   const mandate = "Support for renewable energy infrastructure in rural communities";
   
   useEffect(() => {
-    // Simulate fetching wallet data
     const fetchWalletData = async () => {
       try {
-        // This would be an actual API call in a real implementation
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Mock data
         const mockVotingPower = Math.floor(Math.random() * 650);
         setVotingPower(mockVotingPower);
         setIsLoading(false);
@@ -151,6 +147,8 @@ const MandateWallet = () => {
             </CardFooter>
           </Card>
         </div>
+        
+        <TestTokenReceiver />
         
         <div className="mt-8">
           <Card>
