@@ -8,13 +8,65 @@ from algosdk.mnemonic import to_private_key
 # Load environment variables from .env file if it exists
 load_dotenv()
 
-# Algorand configuration
-ALGORAND_ALGOD_ADDRESS = os.getenv(
-    "ALGORAND_ALGOD_ADDRESS", "https://testnet-api.algonode.cloud")
-ALGORAND_ALGOD_TOKEN = os.getenv("ALGORAND_ALGOD_TOKEN", "")
-ALGORAND_INDEXER_ADDRESS = os.getenv(
-    "ALGORAND_INDEXER_ADDRESS", "https://testnet-idx.algonode.cloud")
-ALGORAND_INDEXER_TOKEN = os.getenv("ALGORAND_INDEXER_TOKEN", "")
+# Algorand TestNet configuration
+ALGORAND_ALGOD_ADDRESS = "https://testnet-api.algonode.cloud"
+ALGORAND_ALGOD_TOKEN = ""  # No token needed for AlgoNode
+ALGORAND_INDEXER_ADDRESS = "https://testnet-idx.algonode.cloud"
+ALGORAND_INDEXER_TOKEN = ""  # No token needed for AlgoNode
+
+# Initialize the TestNet client
+algod_client = algod.AlgodClient(ALGORAND_ALGOD_TOKEN, ALGORAND_ALGOD_ADDRESS)
+
+def create_test_account():
+    """Creates a new TestNet account"""
+    private_key, address = account.generate_account()
+    return {
+        "address": address,
+        "private_key": private_key,
+        "mnemonic": account.mnemonic.from_private_key(private_key)
+    }
+
+def fund_test_wallet(voter_wallet_address):
+    """
+    Sends test tokens to the voter's wallet.
+    In production, this would validate and process actual token transfers.
+    """
+    try:
+        # For TestNet, first make sure you have funded the treasury account
+        # using the Algorand TestNet Dispenser
+        if not os.getenv("TREASURY_MNEMONIC"):
+            return {
+                "success": False,
+                "error": "Treasury account not configured. Please add TREASURY_MNEMONIC to .env"
+            }
+
+        # Get the treasury account
+        treasury_private_key = to_private_key(os.getenv("TREASURY_MNEMONIC"))
+        treasury_address = account.address_from_private_key(treasury_private_key)
+
+        # Get suggested parameters
+        params = algod_client.suggested_params()
+        
+        # Create a payment transaction
+        txn = transaction.PaymentTxn(
+            sender=treasury_address,
+            sp=params,
+            receiver=voter_wallet_address,
+            amt=1000000  # 1 Algo = 1000000 microAlgos
+        )
+        
+        # Sign the transaction
+        signed_txn = txn.sign(treasury_private_key)
+        
+        # Submit the transaction
+        txid = algod_client.send_transaction(signed_txn)
+        
+        # Wait for confirmation
+        transaction.wait_for_confirmation(algod_client, txid, 4)
+        
+        return {"success": True, "txid": txid}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # Quantum security parameters
 QUANTUM_KEY_SIZE = int(os.getenv("QUANTUM_KEY_SIZE", "256"))
