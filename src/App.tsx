@@ -15,6 +15,7 @@ import Index from "./pages/Index"
 import NotFound from "./pages/NotFound"
 import WalletFunding from "./pages/WalletFunding"
 import AIAssistant from "./pages/AIAssistant"
+import MandateWallet from "./pages/MandateWallet"
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/wallet" element={<WalletFunding />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
+            <Route path="/mandate-wallet" element={<MandateWallet />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
