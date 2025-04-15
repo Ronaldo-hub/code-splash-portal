@@ -5,8 +5,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
 
 # Distribution / packaging
 dist/
@@ -19,3 +21,4 @@ build/
 # Local development settings
 instance/
 .webassets-cache
+
