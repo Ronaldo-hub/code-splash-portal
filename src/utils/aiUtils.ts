@@ -1,4 +1,3 @@
-
 import { pipeline } from "@huggingface/transformers";
 import { toast } from "sonner";
 
@@ -10,19 +9,18 @@ export interface Message {
 export const initialMessages: Message[] = [
   {
     role: "assistant",
-    content: "Hello! I'm your Quantum Voting assistant. I can help you understand how our blockchain-based voting system works, explain quantum security, or assist with any questions about registration, voting, or our platform. How can I help you today?"
+    content: "Hello! I'm here to explain why supporting the mandate for renewable energy infrastructure in rural communities is crucial. Would you like to know more about how this initiative can benefit these communities and contribute to sustainable development?"
   }
 ];
 
-// Predefined responses for common voting-related questions
+// Predefined responses focused on the mandate
 export const predefinedResponses: Record<string, string> = {
-  "how does voting work": "Our blockchain-based voting system works by securely recording your vote on the Algorand blockchain. This ensures your vote cannot be tampered with and provides a transparent audit trail. Votes are encrypted with quantum-resistant cryptography for maximum security.",
-  "what is quantum security": "Quantum security uses advanced cryptographic methods resistant to attacks from quantum computers. Our system uses post-quantum cryptography to protect your votes from both current and future technological threats, ensuring long-term data security.",
-  "how do i register": "To register as a voter, go to the Register page where you'll provide your ID number for verification. Our system will create a secure blockchain wallet and quantum-resistant keys for you automatically. This only takes a few moments!",
-  "how to create election": "To create an election, navigate to the Create Election page, fill in the details including title, description, and options. You'll need a funded wallet to cover the blockchain transaction fees. Once submitted, the election will be published on the blockchain.",
-  "how to vote": "To cast a vote, go to the Cast Vote page, select the active election you want to participate in, choose your preferred option, and confirm. Your vote will be securely recorded on the blockchain using quantum-resistant encryption.",
-  "what is offline voting": "Offline voting allows you to prepare your vote without an internet connection. You can create a vote, save it, and submit it later when you're online. This is particularly useful for remote Khoisan communities with limited connectivity.",
-  "wallet funding": "You need to fund your wallet to pay for blockchain transaction fees. On the Fund Wallet page, you can add ALGO to your wallet. These small fees are necessary to process your votes and create elections on the Algorand blockchain.",
+  "what is the mandate": "The mandate focuses on supporting renewable energy infrastructure in rural communities. This initiative aims to bring sustainable power solutions to areas that have limited access to reliable electricity, improving quality of life and enabling economic development.",
+  "why support": "Supporting this mandate is crucial because it helps rural communities access clean, reliable energy. This leads to improved healthcare facilities, better educational opportunities, and increased economic activities. It also reduces reliance on fossil fuels and helps combat climate change.",
+  "how does it work": "You can support this mandate by sending tokens to our quantum-resistant wallet address. The number of tokens received indicates the level of support for implementing renewable energy infrastructure in rural communities. Every token counts towards making sustainable energy accessible.",
+  "benefits": "The benefits of supporting renewable energy in rural areas include: 1) Reliable electricity for homes and businesses 2) Reduced energy costs for communities 3) New job opportunities in the renewable energy sector 4) Improved healthcare and education facilities 5) Environmental protection through clean energy adoption.",
+  "impact": "Your support has direct impact. The tokens received help demonstrate community backing for renewable energy projects, which is crucial for securing additional funding and resources. This helps accelerate the implementation of solar, wind, and other renewable energy solutions in rural areas.",
+  "why quantum resistant": "Our wallet uses quantum-resistant cryptography to ensure that your support remains secure even against future quantum computing threats. This means your contribution to rural renewable energy infrastructure is protected by the most advanced security technology available.",
 };
 
 export const findBestMatch = (input: string): string | null => {
