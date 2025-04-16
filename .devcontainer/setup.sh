@@ -64,6 +64,13 @@ echo "Installing frontend packages..."
 npm install
 echo "Frontend packages installed"
 
+# Ensure Vite is properly installed and available
+echo "Verifying Vite installation..."
+if ! command -v ./node_modules/.bin/vite &> /dev/null; then
+    echo "Vite not found in node_modules. Reinstalling..."
+    npm install vite --save-dev
+fi
+
 echo "Setup completed successfully!"
 echo "To run the backend:"
 echo "  cd backend"
@@ -72,3 +79,4 @@ echo "  python app.py"
 echo ""
 echo "To run the frontend (in a separate terminal):"
 echo "  npm run dev"
+
