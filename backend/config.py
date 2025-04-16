@@ -88,10 +88,33 @@ ERNIE_API_KEY = 'your_api_key_here'
 # Add other API keys here as needed
 
 # Pera Wallet configuration
-PERA_WALLET_ADDRESS = os.getenv(
-    "PERA_WALLET_ADDRESS", "Wallet Address"
-PERA_WALLET_MNEMONIC = os.getenv(
-    "PERA_WALLET_MNEMONIC", "mnemonic")
+def get_or_create_test_wallet():
+    """Returns a persistent test wallet for development"""
+    test_wallet_file = "test_wallet.json"
+    import json
+    import os
+    
+    if os.path.exists(test_wallet_file):
+        with open(test_wallet_file, 'r') as f:
+            wallet_data = json.load(f)
+    else:
+        # Create new wallet
+        private_key, address = account.generate_account()
+        wallet_data = {
+            "address": address,
+            "private_key": private_key,
+            "mnemonic": account.mnemonic.from_private_key(private_key)
+        }
+        # Save wallet data
+        with open(test_wallet_file, 'w') as f:
+            json.dump(wallet_data, f)
+    
+    return wallet_data
+
+# Get the test wallet
+test_wallet = get_or_create_test_wallet()
+PERA_WALLET_ADDRESS = test_wallet['address']
+PERA_WALLET_MNEMONIC = test_wallet['mnemonic']
 
 # Registered wallet for the specific cause
 REGISTERED_CAUSE_WALLET_ADDRESS = "YOUR_REGISTERED_CAUSE_WALLET_ADDRESS"
