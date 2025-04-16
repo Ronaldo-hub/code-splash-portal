@@ -9,7 +9,7 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Copy, ExternalLink, QrCode, Coins } from "lucide-react";
+import { ShieldCheck, Copy, QrCode, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import TestTokenReceiver from "@/components/TestTokenReceiver";
@@ -20,8 +20,33 @@ const MandateWallet = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const walletAddress = "ALGO7QNTVXZWDCBUDMJG5QO6L6ZFEKMPWOKBKJT5ZQOM6NMHOWL3RYPJXA";
-  const mandate = "Support for renewable energy infrastructure in rural communities";
-  
+  const mandate = `Official Mandate to Parliamentary Representatives:
+
+WE, THE KHOISAN FIRST NATIONS PEOPLE, HEREBY DECLARE:
+
+LAND AND SOVEREIGNTY:
+1. Full recognition of Khoisan as the original and sovereign First Nations of Southern Africa
+2. Unconditional return of ancestral territories, including:
+   - Complete and unencumbered land ownership
+   - Full mineral extraction rights
+   - Comprehensive fishing and maritime resource rights
+
+CULTURAL RECOGNITION:
+1. Immediate cessation of the term "coloured" in all official documentation
+2. Official recognition of Khoisan languages as national languages
+3. Comprehensive state-funded language preservation and development programs
+
+REPRESENTATION AND CONSENT:
+1. Direct, proportional parliamentary representation
+2. Absolute veto power on any legislation affecting Khoisan territories and rights
+3. No agreements, treaties, or legislative actions shall be enacted without explicit, documented Khoisan community consent
+
+FINANCIAL REPARATION:
+1. Dedicated national fund for Khoisan community development
+2. Transparent mechanism for historical economic damage compensation
+
+This mandate is a non-negotiable assertion of our fundamental human rights, cultural identity, and territorial sovereignty.`;
+
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
@@ -77,7 +102,7 @@ const MandateWallet = () => {
             </CardHeader>
             <CardContent>
               <div className="bg-muted p-4 rounded-lg mb-4 border border-border">
-                <p className="text-lg font-medium">{mandate}</p>
+                <pre className="text-sm font-medium whitespace-pre-wrap">{mandate}</pre>
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">
@@ -89,12 +114,12 @@ const MandateWallet = () => {
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Current Support Level</h3>
                   <Progress 
-                    value={votingPercentage} 
-                    className={`h-2 ${getProgressColor(votingPercentage)}`} 
+                    value={votingPower / totalVotingPower * 100} 
+                    className={`h-2 ${getProgressColor(votingPower / totalVotingPower * 100)}`} 
                   />
                   <div className="flex justify-between mt-1 text-sm">
                     <span>{isLoading ? "Loading..." : `${votingPower} tokens`}</span>
-                    <span>{`${Math.round(votingPercentage)}% of goal`}</span>
+                    <span>{`${Math.round(votingPower / totalVotingPower * 100)}% of goal`}</span>
                   </div>
                 </div>
               </div>
