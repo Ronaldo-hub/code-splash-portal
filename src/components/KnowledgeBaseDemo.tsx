@@ -69,7 +69,7 @@ const KnowledgeBaseDemo = () => {
             </Button>
           </div>
 
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="all">All Sources</TabsTrigger>
               <TabsTrigger value="twitter">Twitter</TabsTrigger>
