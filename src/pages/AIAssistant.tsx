@@ -3,18 +3,21 @@ import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bot, ArrowLeft, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bot, ArrowLeft, Cog, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
 import { Message, initialMessages, loadAIModel } from "@/utils/aiUtils";
-import { updateContentDatabase } from "@/utils/contentFetcher";
+import { updateContentDatabase, scheduleContentUpdates } from "@/utils/contentFetcher";
+import ApiSettings from "@/components/ApiSettings";
 
 const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [model, setModel] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("chat");
   const navigate = useNavigate();
 
   // Load the model when component mounts
@@ -36,6 +39,9 @@ const AIAssistant = () => {
     };
 
     initializeAI();
+    
+    // Schedule regular content updates
+    scheduleContentUpdates();
     
     return () => {
       isMounted = false;
@@ -99,12 +105,6 @@ const AIAssistant = () => {
   const resetConversation = () => {
     setMessages(initialMessages);
   };
-  
-  const refreshContentDatabase = async () => {
-    setIsModelLoading(true);
-    await updateContentDatabase();
-    setIsModelLoading(false);
-  };
 
   return (
     <Layout>
@@ -128,35 +128,42 @@ const AIAssistant = () => {
               <CardDescription>
                 Ask questions about the Khoisan First Nations mandate on land sovereignty, cultural recognition, representation, and financial reparation.
               </CardDescription>
+              
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                <TabsList className="grid grid-cols-2 w-[400px]">
+                  <TabsTrigger value="chat" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" className="flex items-center gap-2">
+                    <Cog className="h-4 w-4" />
+                    API Settings
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </CardHeader>
+            
             <CardContent>
-              <div className="flex flex-col space-y-4">
-                <MessageList messages={messages} isTyping={isTyping} />
-                <ChatInput 
-                  onSendMessage={handleSendMessage}
-                  onReset={resetConversation}
-                  isModelLoading={isModelLoading}
-                />
-                
-                <div className="flex items-center justify-between">
+              <TabsContent value="chat" className="mt-0">
+                <div className="flex flex-col space-y-4">
+                  <MessageList messages={messages} isTyping={isTyping} />
+                  <ChatInput 
+                    onSendMessage={handleSendMessage}
+                    onReset={resetConversation}
+                    isModelLoading={isModelLoading}
+                  />
+                  
                   {isModelLoading && (
                     <div className="text-sm text-muted-foreground">
                       Loading AI assistant... This may take a moment.
                     </div>
                   )}
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={refreshContentDatabase}
-                    disabled={isModelLoading}
-                    className="ml-auto flex items-center gap-1"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Refresh Knowledge Base
-                  </Button>
                 </div>
-              </div>
+              </TabsContent>
+              
+              <TabsContent value="settings" className="mt-0">
+                <ApiSettings />
+              </TabsContent>
             </CardContent>
           </Card>
           

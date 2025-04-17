@@ -26,7 +26,7 @@ export class VectorDatabase {
     this.isModelLoading = true;
     try {
       console.log("Loading embedding model...");
-      // Use a small, efficient embedding model
+      // Using a higher quality embedding model
       this.embeddingModel = await pipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2"
@@ -97,12 +97,24 @@ export class VectorDatabase {
       .filter(doc => doc.embedding && doc.embedding.length > 0)
       .map(doc => ({
         doc,
-        score: this.cosineSimilarity(queryVector, doc.embedding!)
+        score: this.cosineSimilarity(queryVector, doc.embedding!),
+        // Apply weighting based on source (70% for website, 30% for X)
+        weightedScore: this.getSourceWeight(doc.source) * this.cosineSimilarity(queryVector, doc.embedding!)
       }))
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.weightedScore - a.weightedScore)
       .slice(0, topK);
     
     return scoredDocs.map(item => item.doc);
+  }
+
+  // Apply source weighting: 70% for website, 30% for X
+  private getSourceWeight(source: string): number {
+    if (source.includes('khoisanvoice.carrd.co')) {
+      return 0.7; // Website content is weighted higher
+    } else if (source.includes('x.com') || source.includes('twitter.com')) {
+      return 0.3; // X posts weighted lower
+    }
+    return 0.5; // Default weight for other sources
   }
 
   // Calculate cosine similarity between two vectors

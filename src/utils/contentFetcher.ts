@@ -1,8 +1,9 @@
-
 import { toast } from "sonner";
+import axios from "axios";
 import { vectorDb, DocumentChunk } from "./vectorDb";
+import { websiteConfig, xApiConfig } from "./apiConfig";
 
-// Sample tweets for the mock database
+// Sample tweets for the mock database - will be replaced with real API data when keys are provided
 const SAMPLE_KHOISAN_TWEETS = [
   {
     id: "tweet1",
@@ -66,7 +67,7 @@ const SAMPLE_KHOISAN_TWEETS = [
   }
 ];
 
-// Website content chunks
+// Website content chunks - will be replaced with real data from web scraping
 const WEBSITE_CONTENT = [
   {
     id: "web1",
@@ -134,6 +135,104 @@ const MANDATE_SECTIONS = [
   }
 ];
 
+// Check if X API credentials are configured
+const isXApiConfigured = (): boolean => {
+  return Boolean(xApiConfig.bearerToken);
+};
+
+// Fetch tweets from X API
+async function fetchTweetsFromXApi(): Promise<DocumentChunk[]> {
+  if (!isXApiConfigured()) {
+    console.log("X API not configured, using sample tweets");
+    return SAMPLE_KHOISAN_TWEETS;
+  }
+
+  try {
+    console.log("Fetching tweets from X API...");
+    
+    // Make request to X API
+    const response = await axios.get(
+      `${xApiConfig.baseUrl}/tweets/search/recent?query=from:KhoisanVoice&max_results=100`,
+      {
+        headers: {
+          Authorization: `Bearer ${xApiConfig.bearerToken}`
+        }
+      }
+    );
+
+    if (response.data && response.data.data) {
+      // Transform tweets into DocumentChunk format
+      return response.data.data.map((tweet: any, index: number) => ({
+        id: `tweet-${tweet.id}`,
+        text: tweet.text,
+        date: tweet.created_at || new Date().toISOString(),
+        source: "https://x.com/KhoisanVoice"
+      }));
+    }
+    
+    console.log("No tweets found, using sample tweets");
+    return SAMPLE_KHOISAN_TWEETS;
+  } catch (error) {
+    console.error("Error fetching tweets:", error);
+    console.log("Using sample tweets as fallback");
+    return SAMPLE_KHOISAN_TWEETS;
+  }
+}
+
+// Simple web scraper for the Khoisan Voice website
+// In a real implementation, you'd use a proper library or service
+async function scrapeWebsite(): Promise<DocumentChunk[]> {
+  try {
+    console.log("Attempting to scrape website...");
+    
+    // Try to fetch the website content
+    const response = await axios.get(websiteConfig.url, {
+      timeout: 10000 // 10 seconds timeout
+    });
+    
+    if (response.status === 200) {
+      // Very basic HTML parsing - in production use a proper HTML parser
+      const htmlContent = response.data;
+      
+      // Extract text content (very simplified approach)
+      let textContent = htmlContent
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      
+      // Split into chunks of ~500 characters
+      const chunks = [];
+      const chunkSize = 500;
+      
+      for (let i = 0; i < textContent.length; i += chunkSize) {
+        const chunk = textContent.substring(i, i + chunkSize);
+        if (chunk.trim().length > 50) { // Only add non-trivial chunks
+          chunks.push({
+            id: `web-${i / chunkSize}`,
+            text: chunk,
+            date: new Date().toISOString(),
+            source: websiteConfig.url
+          });
+        }
+      }
+      
+      if (chunks.length > 0) {
+        console.log(`Extracted ${chunks.length} chunks from website`);
+        return chunks;
+      }
+    }
+    
+    console.log("Website scraping failed or returned no content, using sample content");
+    return WEBSITE_CONTENT;
+  } catch (error) {
+    console.error("Error scraping website:", error);
+    console.log("Using sample website content as fallback");
+    return WEBSITE_CONTENT;
+  }
+}
+
 export async function initializeContentDatabase() {
   if (vectorDb.getDocumentCount() > 0) {
     console.log("Content database already initialized with", vectorDb.getDocumentCount(), "documents");
@@ -142,16 +241,18 @@ export async function initializeContentDatabase() {
 
   try {
     console.log("Initializing content database...");
-    toast.info("Loading Khoisan content database...");
+    toast.info("Loading Khoisan Voice content database...");
     
-    // In a real implementation, you would fetch tweets from the X API
-    // and scrape content from the website
-    // For now, we'll use the sample data
+    // Fetch tweets and website content in parallel
+    const [tweets, websiteContent] = await Promise.all([
+      fetchTweetsFromXApi(),
+      scrapeWebsite()
+    ]);
     
     const allContent = [
-      ...SAMPLE_KHOISAN_TWEETS,
-      ...WEBSITE_CONTENT,
-      ...MANDATE_SECTIONS
+      ...tweets,
+      ...websiteContent,
+      ...MANDATE_SECTIONS // Always include the mandate sections
     ];
     
     await vectorDb.addDocuments(allContent);
@@ -165,16 +266,15 @@ export async function initializeContentDatabase() {
 }
 
 // Function to update the database with new content
-// In a real implementation, this would fetch new tweets periodically
 export async function updateContentDatabase() {
   try {
-    // For demo purposes, we're just reloading the same content
-    // In a real implementation, you would fetch only new content
     console.log("Updating content database...");
     toast.info("Refreshing content database...");
     
-    // Clear existing content and reload
+    // Clear existing content
     vectorDb.clearDocuments();
+    
+    // Re-fetch all content
     await initializeContentDatabase();
     
     return true;
@@ -183,4 +283,17 @@ export async function updateContentDatabase() {
     toast.error("Failed to update content database");
     return false;
   }
+}
+
+// Schedule regular updates (e.g., daily)
+export function scheduleContentUpdates() {
+  const updateInterval = websiteConfig.refreshInterval;
+  
+  // Set up interval for content updates
+  setInterval(async () => {
+    console.log("Running scheduled content update...");
+    await updateContentDatabase();
+  }, updateInterval);
+  
+  console.log(`Content updates scheduled every ${updateInterval / (60 * 60 * 1000)} hours`);
 }

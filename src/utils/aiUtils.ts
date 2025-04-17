@@ -1,5 +1,4 @@
 
-import { pipeline } from "@huggingface/transformers";
 import { toast } from "sonner";
 import { ragService } from "./ragService";
 import { initializeContentDatabase } from "./contentFetcher";
@@ -19,11 +18,6 @@ export const initialMessages: Message[] = [
 
 // Initialize the content database when this module is loaded
 initializeContentDatabase();
-
-// Using RAG service to generate responses
-export const findBestMatch = (input: string): string | null => {
-  return null; // We'll use the RAG service instead
-};
 
 export const loadAIModel = async (): Promise<any> => {
   // We're just returning a function that will use our RAG service
