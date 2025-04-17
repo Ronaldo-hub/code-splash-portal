@@ -2,7 +2,7 @@
 import axios from "axios";
 import { vectorDb } from "./vectorDb";
 import { toast } from "sonner";
-import { openRouterConfig } from "./apiConfig";
+import { openRouterConfig, ragConfig } from "./apiConfig";
 
 interface GenerationOptions {
   max_new_tokens?: number;
@@ -29,7 +29,7 @@ export class RagService {
       }
       
       // Retrieve relevant documents
-      const relevantDocs = await vectorDb.similaritySearch(query, 5);
+      const relevantDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
       
       if (relevantDocs.length === 0) {
         return "I couldn't find specific information, but the Khoisan Voice is dedicated to cultural preservation—learn more at https://khoisanvoice.carrd.co/. Thanks for asking!";
@@ -56,6 +56,7 @@ User question: ${query}
 Answer (3-5 sentences max):`;
 
       console.log("Sending request to OpenRouter API...");
+      console.log(`Using model: ${openRouterConfig.model}`);
       
       // Call OpenRouter API
       const response = await axios.post(
@@ -72,7 +73,9 @@ Answer (3-5 sentences max):`;
         {
           headers: {
             "Authorization": `Bearer ${openRouterConfig.apiKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "HTTP-Referer": window.location.href, // Required by OpenRouter
+            "X-Title": "Khoisan Voice Assistant" // Optional but helpful for tracking
           }
         }
       );
@@ -90,6 +93,22 @@ Answer (3-5 sentences max):`;
       }
     } catch (error) {
       console.error("Error generating response:", error);
+      
+      // More detailed error handling
+      if (axios.isAxiosError(error)) {
+        const statusCode = error.response?.status;
+        const errorMessage = error.response?.data?.error?.message || error.message;
+        
+        if (statusCode === 401 || statusCode === 403) {
+          return "Authentication error with OpenRouter API. Please check your API key in the settings.";
+        } else if (statusCode === 429) {
+          return "Rate limit exceeded. Please try again later or consider upgrading your OpenRouter plan.";
+        } else {
+          console.error(`OpenRouter API error: ${errorMessage}`);
+          return `Error connecting to the AI service. Please try again later. (Error: ${statusCode || 'Unknown'})`;
+        }
+      }
+      
       return "I encountered an error while processing your request. Please try again later or visit https://khoisanvoice.carrd.co/ to learn more about the Khoisan Voice initiative.";
     }
   }
