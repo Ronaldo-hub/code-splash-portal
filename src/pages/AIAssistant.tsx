@@ -11,6 +11,7 @@ import ChatInput from "@/components/chat/ChatInput";
 import { Message, initialMessages, loadAIModel } from "@/utils/aiUtils";
 import { updateContentDatabase, scheduleContentUpdates } from "@/utils/contentFetcher";
 import ApiSettings from "@/components/ApiSettings";
+import KnowledgeBaseDemo from "@/components/KnowledgeBaseDemo";
 
 const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -140,30 +141,33 @@ const AIAssistant = () => {
                     API Settings
                   </TabsTrigger>
                 </TabsList>
+                
+                <TabsContent value="chat" className="mt-0">
+                  <div className="flex flex-col space-y-4">
+                    <MessageList messages={messages} isTyping={isTyping} />
+                    <ChatInput 
+                      onSendMessage={handleSendMessage}
+                      onReset={resetConversation}
+                      isModelLoading={isModelLoading}
+                    />
+                    
+                    {isModelLoading && (
+                      <div className="text-sm text-muted-foreground">
+                        Loading AI assistant... This may take a moment.
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="settings" className="mt-0">
+                  <ApiSettings />
+                </TabsContent>
               </Tabs>
             </CardHeader>
             
             <CardContent>
-              <TabsContent value="chat" className="mt-0">
-                <div className="flex flex-col space-y-4">
-                  <MessageList messages={messages} isTyping={isTyping} />
-                  <ChatInput 
-                    onSendMessage={handleSendMessage}
-                    onReset={resetConversation}
-                    isModelLoading={isModelLoading}
-                  />
-                  
-                  {isModelLoading && (
-                    <div className="text-sm text-muted-foreground">
-                      Loading AI assistant... This may take a moment.
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="settings" className="mt-0">
-                <ApiSettings />
-              </TabsContent>
+              {/* Knowledge Base Demo */}
+              <KnowledgeBaseDemo />
             </CardContent>
           </Card>
           
