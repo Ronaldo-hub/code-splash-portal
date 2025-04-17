@@ -12,6 +12,7 @@ import { Message, initialMessages, loadAIModel } from "@/utils/aiUtils";
 import { updateContentDatabase, scheduleContentUpdates } from "@/utils/contentFetcher";
 import ApiSettings from "@/components/ApiSettings";
 import KnowledgeBaseDemo from "@/components/KnowledgeBaseDemo";
+import { toast } from "sonner";
 
 const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -31,10 +32,13 @@ const AIAssistant = () => {
         if (isMounted) {
           setModel(textGenerator);
           setIsModelLoading(false);
+          console.log("AI model initialized successfully");
         }
       } catch (error) {
+        console.error("Error initializing AI model:", error);
         if (isMounted) {
           setIsModelLoading(false);
+          toast.error("Failed to initialize AI model. Please try again later.");
         }
       }
     };
@@ -50,6 +54,8 @@ const AIAssistant = () => {
   }, []);
 
   const handleSendMessage = async (inputText: string) => {
+    if (!inputText.trim()) return;
+    
     // Add user message
     const userMessage: Message = { role: "user", content: inputText };
     setMessages(prevMessages => [...prevMessages, userMessage]);
@@ -58,27 +64,36 @@ const AIAssistant = () => {
     try {
       if (model) {
         // Use the model for questions
-        const result = await model(userMessage.content, {
-          max_new_tokens: 250,
-          temperature: 0.7
-        });
+        console.log("Generating response for:", inputText);
         
-        let response = result[0].generated_text.replace(userMessage.content, "").trim();
-        
-        // Fallback if model returns empty or nonsensical response
-        if (!response || response.length < 10) {
-          response = "I apologize, but I couldn't generate a specific answer to your question. The Khoisan mandate focuses on land sovereignty, cultural recognition, representation, and financial reparation for the Khoisan First Nations people. Is there a particular aspect of the mandate you'd like to know more about?";
+        try {
+          const result = await model(userMessage.content, {
+            max_new_tokens: 250,
+            temperature: 0.7
+          });
+          
+          let response = result[0].generated_text.replace(userMessage.content, "").trim();
+          
+          // Fallback if model returns empty or nonsensical response
+          if (!response || response.length < 10) {
+            console.log("Model returned insufficient response, using fallback");
+            response = "I apologize, but I couldn't generate a specific answer to your question. The Khoisan mandate focuses on land sovereignty, cultural recognition, representation, and financial reparation for the Khoisan First Nations people. Is there a particular aspect of the mandate you'd like to know more about?";
+          }
+          
+          // Add assistant response after a small delay to simulate thinking
+          setTimeout(() => {
+            setMessages(prevMessages => [
+              ...prevMessages, 
+              { role: "assistant", content: response }
+            ]);
+            setIsTyping(false);
+          }, 1000);
+        } catch (error) {
+          console.error("Error in model response generation:", error);
+          handleResponseError();
         }
-        
-        // Add assistant response after a small delay to simulate thinking
-        setTimeout(() => {
-          setMessages(prevMessages => [
-            ...prevMessages, 
-            { role: "assistant", content: response }
-          ]);
-          setIsTyping(false);
-        }, 1000);
       } else {
+        console.log("Model not initialized, sending initialization message");
         setTimeout(() => {
           setMessages(prevMessages => [
             ...prevMessages, 
@@ -91,16 +106,21 @@ const AIAssistant = () => {
         }, 500);
       }
     } catch (error) {
-      console.error("Error generating response:", error);
-      setMessages(prevMessages => [
-        ...prevMessages,
-        { 
-          role: "assistant", 
-          content: "I encountered an error processing your request. Please try again later." 
-        }
-      ]);
-      setIsTyping(false);
+      console.error("Error in message handling:", error);
+      handleResponseError();
     }
+  };
+
+  const handleResponseError = () => {
+    setMessages(prevMessages => [
+      ...prevMessages,
+      { 
+        role: "assistant", 
+        content: "I'm having trouble processing your request right now. This could be due to a connection issue or server load. Please try again in a few moments, or check the API settings to ensure everything is configured correctly." 
+      }
+    ]);
+    setIsTyping(false);
+    toast.error("Error generating response. Please try again later.");
   };
 
   const resetConversation = () => {
