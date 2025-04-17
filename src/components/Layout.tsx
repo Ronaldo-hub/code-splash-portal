@@ -1,11 +1,13 @@
 
 import React, { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ShieldCheck, LogOut, Bot, PieChart } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ShieldCheck, LogOut, Bot, PieChart, User } from "lucide-react";
 import { useBetaAccess } from "@/contexts/BetaAccessContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,13 +15,22 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isActive = (path: string) => location.pathname === path;
   const { revokeBetaAccess } = useBetaAccess();
+  const { user, logout } = useAuth();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [betaDialogOpen, setBetaDialogOpen] = useState(false);
 
   const handleLogout = () => {
-    revokeBetaAccess();
+    logout();
     setLogoutDialogOpen(false);
+    navigate("/login");
+  };
+
+  const handleExitBeta = () => {
+    revokeBetaAccess();
+    setBetaDialogOpen(false);
     toast.success("Beta access revoked");
   };
 
@@ -53,15 +64,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Bot className="h-4 w-4" />
               AI Assistant
             </Link>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setLogoutDialogOpen(true)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4 mr-1" />
-              <span className="text-sm">Exit Beta</span>
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm">{user?.name || 'Account'}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLogoutDialogOpen(true)}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setBetaDialogOpen(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  <span>Exit Beta</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
           
           <div className="md:hidden">
@@ -93,7 +114,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </footer>
 
+      {/* Logout Dialog */}
       <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to logout? You'll need to enter your credentials again to access the application.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleLogout}>Logout</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Beta Dialog */}
+      <Dialog open={betaDialogOpen} onOpenChange={setBetaDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Exit Beta Testing</DialogTitle>
@@ -102,8 +140,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLogoutDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleLogout}>Exit Beta</Button>
+            <Button variant="outline" onClick={() => setBetaDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleExitBeta}>Exit Beta</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
