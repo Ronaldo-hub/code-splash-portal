@@ -27,9 +27,9 @@ interface XApiConfig {
   baseUrl: string;
 }
 
-// Default configurations - these should be replaced with real credentials
+// Default configurations with your API keys
 export const openRouterConfig: OpenRouterConfig = {
-  apiKey: "", // Will be provided by user
+  apiKey: "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",
   baseUrl: "https://openrouter.ai/api/v1/chat/completions",
   model: "meta-llama/llama-3.1-8b-instruct",
   maxNewTokens: 300,
@@ -68,13 +68,13 @@ export const openRouterConfig: OpenRouterConfig = {
   ]
 };
 
-// X API configuration
+// X API configuration with your API keys
 export const xApiConfig: XApiConfig = {
-  apiKey: "", // Will be provided by user
-  apiKeySecret: "", // Will be provided by user
-  accessToken: "", // Will be provided by user
-  accessTokenSecret: "", // Will be provided by user
-  bearerToken: "", // Will be provided by user
+  apiKey: "cY7p1daRlWOdzy39Q8UdwpYJF",
+  apiKeySecret: "4peT1FqWaMf79H07ZsfgSXx7mrUZhYKDpTV5iwN3pbgCsSccHz",
+  accessToken: "1502572394988322818-Lm136CHUYZby3clZ5D5KSgIzJONV9u",
+  accessTokenSecret: "R32K2UBcdJTLQnCjfaLra4V6kaHvllvFU96txyeRv0NRg",
+  bearerToken: "AAAAAAAAAAAAAAAAAAAAAFyn0gEAAAAAoNohORWk3CUXvJeDEdN6QeIyklE%3DywkPnuAux6hjdRMLpKbJ3OSIzTb7yySz5BG6WsMdsbqmeBrWWA",
   baseUrl: "https://api.twitter.com/2"
 };
 
