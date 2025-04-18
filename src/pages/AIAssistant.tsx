@@ -4,7 +4,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, ArrowLeft, Cog, MessageSquare } from "lucide-react";
+import { Bot, ArrowLeft, Cog, MessageSquare, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
@@ -13,6 +13,8 @@ import { updateContentDatabase, scheduleContentUpdates } from "@/utils/contentFe
 import ApiSettings from "@/components/ApiSettings";
 import KnowledgeBaseDemo from "@/components/KnowledgeBaseDemo";
 import { toast } from "sonner";
+import { ragService } from "@/utils/ragService";
+import { loadConfigurationsFromStorage } from "@/utils/apiConfig";
 
 const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -20,30 +22,49 @@ const AIAssistant = () => {
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [model, setModel] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("chat");
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Load the model when component mounts
+  // Load saved configurations and initialize the assistant
   useEffect(() => {
+    // Load saved configurations
+    loadConfigurationsFromStorage();
+    
     let isMounted = true;
     
     const initializeAI = async () => {
       try {
+        // Try to initialize the AI model
         const textGenerator = await loadAIModel();
         if (isMounted) {
           setModel(textGenerator);
           setIsModelLoading(false);
+          setModelLoadError(null);
           console.log("AI model initialized successfully");
         }
       } catch (error) {
         console.error("Error initializing AI model:", error);
         if (isMounted) {
           setIsModelLoading(false);
-          toast.error("Failed to initialize AI model. Please try again later.");
+          setModelLoadError("Failed to initialize AI model");
+          toast.error("Failed to initialize AI model. Will use OpenRouter API as fallback.");
         }
       }
     };
 
     initializeAI();
+    
+    // Initialize content database for RAG
+    const initializeContent = async () => {
+      try {
+        await updateContentDatabase();
+      } catch (error) {
+        console.error("Error initializing content database:", error);
+        toast.error("Failed to initialize content database. Some responses may be limited.");
+      }
+    };
+    
+    initializeContent();
     
     // Schedule regular content updates
     scheduleContentUpdates();
@@ -62,9 +83,9 @@ const AIAssistant = () => {
     setIsTyping(true);
     
     try {
-      if (model) {
-        // Use the model for questions
-        console.log("Generating response for:", inputText);
+      // First try with local model if available
+      if (model && !modelLoadError) {
+        console.log("Generating response using local model for:", inputText);
         
         try {
           const result = await model(userMessage.content, {
@@ -74,36 +95,41 @@ const AIAssistant = () => {
           
           let response = result[0].generated_text.replace(userMessage.content, "").trim();
           
-          // Fallback if model returns empty or nonsensical response
-          if (!response || response.length < 10) {
-            console.log("Model returned insufficient response, using fallback");
-            response = "I apologize, but I couldn't generate a specific answer to your question. The Khoisan mandate focuses on land sovereignty, cultural recognition, representation, and financial reparation for the Khoisan First Nations people. Is there a particular aspect of the mandate you'd like to know more about?";
+          // Check if response is valid
+          if (response && response.length >= 10) {
+            // Add assistant response after a small delay to simulate thinking
+            setTimeout(() => {
+              setMessages(prevMessages => [
+                ...prevMessages, 
+                { role: "assistant", content: response }
+              ]);
+              setIsTyping(false);
+            }, 1000);
+            return;
+          } else {
+            console.log("Local model returned insufficient response, using OpenRouter API");
           }
-          
-          // Add assistant response after a small delay to simulate thinking
-          setTimeout(() => {
-            setMessages(prevMessages => [
-              ...prevMessages, 
-              { role: "assistant", content: response }
-            ]);
-            setIsTyping(false);
-          }, 1000);
         } catch (error) {
-          console.error("Error in model response generation:", error);
-          handleResponseError();
+          console.error("Error in local model response generation:", error);
         }
-      } else {
-        console.log("Model not initialized, sending initialization message");
+      }
+      
+      // Fallback to OpenRouter API using RAG
+      console.log("Using OpenRouter API with RAG for:", inputText);
+      try {
+        const response = await ragService.generateResponse(inputText);
+        
+        // Add assistant response after a small delay to simulate thinking
         setTimeout(() => {
           setMessages(prevMessages => [
             ...prevMessages, 
-            { 
-              role: "assistant", 
-              content: "I'm still initializing. Please try again in a moment." 
-            }
+            { role: "assistant", content: response }
           ]);
           setIsTyping(false);
-        }, 500);
+        }, 1000);
+      } catch (error) {
+        console.error("Error in OpenRouter API response generation:", error);
+        handleResponseError();
       }
     } catch (error) {
       console.error("Error in message handling:", error);
@@ -164,6 +190,15 @@ const AIAssistant = () => {
                 
                 <TabsContent value="chat" className="mt-0">
                   <div className="flex flex-col space-y-4">
+                    {modelLoadError && (
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-md mb-2">
+                        <AlertCircle className="h-5 w-5" />
+                        <p className="text-sm">
+                          {modelLoadError}. Using OpenRouter API as fallback.
+                        </p>
+                      </div>
+                    )}
+                    
                     <MessageList messages={messages} isTyping={isTyping} />
                     <ChatInput 
                       onSendMessage={handleSendMessage}

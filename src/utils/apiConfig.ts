@@ -29,12 +29,18 @@ interface XApiConfig {
 
 // Default configurations with your API keys
 export const openRouterConfig: OpenRouterConfig = {
-  apiKey: "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",
+  apiKey: "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",
   baseUrl: "https://openrouter.ai/api/v1/chat/completions",
-  model: "meta-llama/llama-3.1-8b-instruct",
+  model: "deepseek/deepseek-chat",
   maxNewTokens: 300,
   temperature: 0.7,
   availableModels: [
+    {
+      id: "deepseek/deepseek-chat",
+      name: "Deepseek Chat",
+      description: "Deepseek's conversational model (free tier)",
+      free: true
+    },
     {
       id: "meta-llama/llama-3.1-8b-instruct",
       name: "Llama 3.1 8B Instruct",

@@ -114,9 +114,14 @@ Answer (3-5 sentences max):`;
         }
       }
       
-      // Fallback when OpenRouter is not available - use predefined responses based on keywords
-      console.log("Using fallback response mechanism for query:", query);
-      return this.getFallbackResponse(query, relevantDocs);
+      try {
+        // Get the query to find relevant documents for the fallback
+        const fallbackDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
+        return this.getFallbackResponse(query, fallbackDocs);
+      } catch (fallbackError) {
+        console.error("Error generating fallback response:", fallbackError);
+        return this.getFallbackResponse(query, []);
+      }
     }
   }
   
