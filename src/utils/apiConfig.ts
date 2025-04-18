@@ -1,4 +1,3 @@
-
 // Configuration for external APIs - In production, use environment variables
 
 // OpenRouter Configuration
@@ -108,24 +107,11 @@ export const setOpenRouterCredentials = (
   temperature?: number,
   maxNewTokens?: number
 ) => {
+  console.log(`Setting OpenRouter API key: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
   openRouterConfig.apiKey = apiKey;
   if (model) openRouterConfig.model = model;
   if (temperature !== undefined) openRouterConfig.temperature = temperature;
   if (maxNewTokens) openRouterConfig.maxNewTokens = maxNewTokens;
-};
-
-export const setXApiCredentials = (
-  apiKey: string,
-  apiKeySecret: string,
-  accessToken: string,
-  accessTokenSecret: string,
-  bearerToken: string
-) => {
-  xApiConfig.apiKey = apiKey;
-  xApiConfig.apiKeySecret = apiKeySecret;
-  xApiConfig.accessToken = accessToken;
-  xApiConfig.accessTokenSecret = accessTokenSecret;
-  xApiConfig.bearerToken = bearerToken;
 };
 
 // Export all configurations for easy access
@@ -143,6 +129,7 @@ export const saveConfigurationsToStorage = () => {
   try {
     localStorage.setItem('openRouterConfig', JSON.stringify(openRouterConfig));
     localStorage.setItem('xApiConfig', JSON.stringify(xApiConfig));
+    console.log("Configurations saved to localStorage");
     return true;
   } catch (error) {
     console.error('Failed to save configurations to storage:', error);
@@ -162,6 +149,7 @@ export const loadConfigurationsFromStorage = () => {
       openRouterConfig.model = parsedConfig.model || openRouterConfig.model;
       openRouterConfig.temperature = parsedConfig.temperature || openRouterConfig.temperature;
       openRouterConfig.maxNewTokens = parsedConfig.maxNewTokens || openRouterConfig.maxNewTokens;
+      console.log(`Loaded OpenRouter API key from storage: ${openRouterConfig.apiKey.substring(0, 10)}... (length: ${openRouterConfig.apiKey.length})`);
     }
     
     if (savedXApiConfig) {
