@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { ragService } from "./ragService";
 import { initializeContentDatabase } from "./contentFetcher";
@@ -13,7 +12,7 @@ export interface Message {
 export const initialMessages: Message[] = [
   {
     role: "assistant",
-    content: "Hello! I'm your AI assistant focused on the Khoisan First Nations mandate. I can explain our position on land sovereignty, cultural recognition, representation, and financial reparation. How can I help you understand our cause today?"
+    content: "Greetings! I'm your dedicated AI assistant for understanding and supporting the Khoisan First Nations mandate. I can explain our position on:\n\n• Land sovereignty\n• Cultural recognition\n• Political representation\n• Financial reparation\n\nWhat would you like to learn about first?"
   }
 ];
 

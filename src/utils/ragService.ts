@@ -1,4 +1,3 @@
-
 import axios from "axios";
 import { vectorDb } from "./vectorDb";
 import { toast } from "sonner";
@@ -26,15 +25,20 @@ export class RagService {
     try {
       if (!openRouterConfig.apiKey) {
         console.log("No API key configured for OpenRouter");
-        return "API key not configured. Please set up OpenRouter API credentials in the settings.";
+        return "I need to be configured with an API key to help you better. Please check the settings.";
+      }
+      
+      // Handle greetings and common conversation starters
+      const normalizedQuery = query.toLowerCase().trim();
+      if (this.isGreeting(normalizedQuery)) {
+        return this.getGreetingResponse();
       }
       
       // Retrieve relevant documents
       const relevantDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
       
       if (relevantDocs.length === 0) {
-        console.log("No relevant documents found");
-        return "I couldn't find specific information, but the Khoisan Voice is dedicated to cultural preservation—learn more at https://khoisanvoice.carrd.co/. Thanks for asking!";
+        return this.getContextualFallbackResponse(normalizedQuery);
       }
       
       // Construct context from retrieved documents
@@ -125,7 +129,34 @@ Answer (3-5 sentences max):`;
     }
   }
   
-  // Provide a fallback response based on keywords in the user's query
+  private isGreeting(query: string): boolean {
+    const greetings = ['hello', 'hi', 'hey', 'greetings', 'good morning', 'good afternoon', 'good evening'];
+    return greetings.some(greeting => query.includes(greeting));
+  }
+  
+  private getGreetingResponse(): string {
+    const greetings = [
+      "Hello! I'm here to help you understand and support the Khoisan First Nations mandate. Would you like to learn about our land sovereignty, cultural recognition, representation, or financial reparation initiatives?",
+      "Hi there! I'm your guide to the Khoisan First Nations mandate. What would you like to know about our mission for indigenous rights and cultural preservation?",
+      "Welcome! I'm dedicated to sharing information about the Khoisan First Nations mandate. How can I help you understand our vital cause today?"
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }
+  
+  private getContextualFallbackResponse(query: string): string {
+    // Enhanced contextual responses when no specific documents are found
+    if (query.includes('help') || query.includes('support')) {
+      return "I'm here to help you understand how to support the Khoisan mandate. We focus on four key areas: land sovereignty, cultural recognition, political representation, and financial reparation. Which aspect would you like to learn more about?";
+    }
+    
+    if (query.includes('thank') || query.includes('thanks')) {
+      return "You're welcome! Your interest in supporting the Khoisan First Nations mandate is appreciated. Is there anything else you'd like to know about our cause?";
+    }
+    
+    // Default response is more engaging than before
+    return "While I don't have specific information about that, I'd be happy to tell you about the Khoisan mandate's key pillars: land sovereignty, cultural recognition, political representation, and financial reparation. Which interests you most? You can also learn more at https://khoisanvoice.carrd.co/";
+  }
+  
   private getFallbackResponse(query: string, docs: any[]): string {
     const queryLower = query.toLowerCase();
     
@@ -154,7 +185,6 @@ Answer (3-5 sentences max):`;
     return "The Khoisan mandate represents a comprehensive approach to addressing historical injustices faced by the indigenous people of Southern Africa. It covers land sovereignty, cultural recognition, political representation, and financial reparation. Supporting this mandate helps promote justice, dignity, and self-determination for a people whose rights have been systematically violated for centuries. Learn more at https://khoisanvoice.carrd.co/ and join our movement for indigenous rights!";
   }
   
-  // Ensure the response has citations
   private ensureCitations(text: string, docs: any[]): string {
     // If text already has citations, return as is
     if (text.includes("Source:") || text.includes("(Source:")) {
