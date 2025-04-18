@@ -1,3 +1,4 @@
+
 import axios from "axios";
 import { vectorDb } from "./vectorDb";
 import { toast } from "sonner";
@@ -23,10 +24,13 @@ export class RagService {
   
   public async generateResponse(query: string, options: GenerationOptions = {}): Promise<string> {
     try {
-      if (!openRouterConfig.apiKey) {
+      if (!openRouterConfig.apiKey || openRouterConfig.apiKey.trim() === "") {
         console.log("No API key configured for OpenRouter");
-        return "I need to be configured with an API key to help you better. Please check the settings.";
+        return "I need to be configured with a valid API key to help you better. Please check the settings.";
       }
+      
+      // Log the API key (first few characters for debugging)
+      console.log(`Using API key: ${openRouterConfig.apiKey.substring(0, 10)}...`);
       
       // Handle greetings and common conversation starters
       const normalizedQuery = query.toLowerCase().trim();
@@ -109,7 +113,7 @@ Answer (3-5 sentences max):`;
         console.error(`API error: ${statusCode} - ${errorMessage}`);
         
         if (statusCode === 401 || statusCode === 403) {
-          return "Authentication error with OpenRouter API. Please check your API key in the settings.";
+          return "Authentication error with OpenRouter API. Please check your API key in the settings. Make sure it starts with 'sk-or-v1-'.";
         } else if (statusCode === 429) {
           return "Rate limit exceeded. Please try again later or consider upgrading your OpenRouter plan.";
         } else {
