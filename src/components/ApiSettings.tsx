@@ -14,10 +14,11 @@ import {
   openRouterConfig, 
   xApiConfig,
   saveConfigurationsToStorage,
-  loadConfigurationsFromStorage
+  loadConfigurationsFromStorage,
+  validateOpenRouterKey
 } from "@/utils/apiConfig";
 import { updateContentDatabase } from "@/utils/contentFetcher";
-import { LockIcon, KeyIcon, RefreshCwIcon, ThermometerIcon, HashIcon } from "lucide-react";
+import { LockIcon, KeyIcon, RefreshCwIcon, ThermometerIcon, HashIcon, AlertCircleIcon } from "lucide-react";
 
 const ApiSettings = () => {
   // OpenRouter settings
@@ -25,6 +26,7 @@ const ApiSettings = () => {
   const [openRouterModel, setOpenRouterModel] = useState(openRouterConfig.model);
   const [temperature, setTemperature] = useState(openRouterConfig.temperature);
   const [maxTokens, setMaxTokens] = useState(openRouterConfig.maxNewTokens);
+  const [keyValidation, setKeyValidation] = useState<{valid: boolean; message?: string}>({valid: true});
   
   // X API settings
   const [xBearerToken, setXBearerToken] = useState(xApiConfig.bearerToken);
@@ -49,17 +51,39 @@ const ApiSettings = () => {
     setXApiSecret(xApiConfig.apiKeySecret);
     setXAccessToken(xApiConfig.accessToken);
     setXAccessSecret(xApiConfig.accessTokenSecret);
+    
+    // Validate loaded key
+    validateKey(openRouterConfig.apiKey);
   }, []);
+  
+  const validateKey = (key: string) => {
+    const validation = validateOpenRouterKey(key);
+    setKeyValidation(validation);
+    return validation.valid;
+  };
+  
+  const handleOpenRouterKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setOpenRouterKey(newKey);
+    validateKey(newKey);
+  };
   
   const handleSaveOpenRouter = async () => {
     setIsSaving(true);
     try {
+      // Validate key first
+      if (!validateKey(openRouterKey)) {
+        toast.error(`API key error: ${keyValidation.message}`);
+        setIsSaving(false);
+        return;
+      }
+      
       setOpenRouterCredentials(openRouterKey, openRouterModel, temperature, maxTokens);
       saveConfigurationsToStorage();
       toast.success("OpenRouter API credentials saved");
     } catch (error) {
       console.error("Error saving OpenRouter credentials:", error);
-      toast.error("Failed to save OpenRouter credentials");
+      toast.error(error instanceof Error ? error.message : "Failed to save OpenRouter credentials");
     } finally {
       setIsSaving(false);
     }
@@ -119,13 +143,25 @@ const ApiSettings = () => {
           <div className="space-y-2">
             <Label htmlFor="openrouter-key">API Key</Label>
             <div className="flex gap-2">
-              <Input
-                id="openrouter-key"
-                type="password"
-                placeholder="Enter your OpenRouter API key"
-                value={openRouterKey}
-                onChange={(e) => setOpenRouterKey(e.target.value)}
-              />
+              <div className="flex-1">
+                <Input
+                  id="openrouter-key"
+                  type="password"
+                  placeholder="Enter your OpenRouter API key"
+                  value={openRouterKey}
+                  onChange={handleOpenRouterKeyChange}
+                  className={!keyValidation.valid ? "border-red-500" : ""}
+                />
+                {!keyValidation.valid && (
+                  <div className="flex items-center gap-1 mt-1 text-red-500 text-xs">
+                    <AlertCircleIcon className="h-3 w-3" />
+                    {keyValidation.message}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Must begin with "sk-or-v1-" - Get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a>
+                </p>
+              </div>
               <Button onClick={handleSaveOpenRouter} disabled={isSaving} className="shrink-0">
                 {isSaving ? "Saving..." : "Save Key"}
               </Button>

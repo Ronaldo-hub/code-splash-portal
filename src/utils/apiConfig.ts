@@ -1,3 +1,4 @@
+
 // Configuration for external APIs - In production, use environment variables
 
 // OpenRouter Configuration
@@ -100,6 +101,29 @@ export const ragConfig = {
   topK: 5, // Number of chunks to retrieve for each query
 };
 
+// Function to validate OpenRouter API key format
+export const validateOpenRouterKey = (apiKey: string): { valid: boolean; message?: string } => {
+  if (!apiKey || apiKey.trim() === "") {
+    return { valid: false, message: "API key is empty" };
+  }
+  
+  const trimmedKey = apiKey.trim();
+  
+  if (!trimmedKey.startsWith("sk-or-v1-")) {
+    return { valid: false, message: "API key must start with 'sk-or-v1-'" };
+  }
+  
+  if (trimmedKey.includes(" ") || trimmedKey.includes("\n")) {
+    return { valid: false, message: "API key contains whitespace" };
+  }
+  
+  if (trimmedKey.length < 30) {
+    return { valid: false, message: "API key is too short" };
+  }
+  
+  return { valid: true };
+};
+
 // Function to set API credentials (would be used from a settings page)
 export const setOpenRouterCredentials = (
   apiKey: string,
@@ -107,8 +131,18 @@ export const setOpenRouterCredentials = (
   temperature?: number,
   maxNewTokens?: number
 ) => {
-  console.log(`Setting OpenRouter API key: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
-  openRouterConfig.apiKey = apiKey;
+  // Validate API key before setting
+  const validation = validateOpenRouterKey(apiKey);
+  if (!validation.valid) {
+    console.error(`Invalid OpenRouter API key: ${validation.message}`);
+    throw new Error(validation.message);
+  }
+  
+  // Trim whitespace to avoid common errors
+  const trimmedKey = apiKey.trim();
+  console.log(`Setting OpenRouter API key: ${trimmedKey.substring(0, 10)}... (length: ${trimmedKey.length})`);
+  
+  openRouterConfig.apiKey = trimmedKey;
   if (model) openRouterConfig.model = model;
   if (temperature !== undefined) openRouterConfig.temperature = temperature;
   if (maxNewTokens) openRouterConfig.maxNewTokens = maxNewTokens;

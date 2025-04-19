@@ -56,9 +56,10 @@ export class RagService {
       console.log(`API Base URL: ${openRouterConfig.baseUrl}`);
       
       // Prepare request configuration with detailed headers
+      // Fix: Ensure proper formatting of Authorization header
       const requestConfig = {
         headers: {
-          "Authorization": `Bearer ${openRouterConfig.apiKey}`,
+          "Authorization": `Bearer ${openRouterConfig.apiKey.trim()}`,
           "Content-Type": "application/json",
           "HTTP-Referer": window.location.href,
           "X-Title": "Khoisan Voice Assistant"
@@ -84,7 +85,7 @@ export class RagService {
         temperature: options.temperature || openRouterConfig.temperature,
       };
       
-      // Log request body (excluding the full prompt)
+      // Log request body (excluding the full prompt for privacy)
       console.log("Request body:", {
         model: requestBody.model,
         max_tokens: requestBody.max_tokens,
@@ -138,7 +139,17 @@ export class RagService {
           const keyLength = openRouterConfig.apiKey.length;
           const keyStart = openRouterConfig.apiKey.substring(0, 10);
           console.error(`Authentication error with key starting with ${keyStart}... (length: ${keyLength})`);
-          return `Authentication error with OpenRouter API. Please check your API key in the settings. Make sure it starts with 'sk-or-v1-'. Current key starts with: ${keyStart}...`;
+          
+          // Check for specific format or character issues in the API key
+          if (openRouterConfig.apiKey.includes(" ") || openRouterConfig.apiKey.includes("\n")) {
+            return "Authentication error with OpenRouter API. Your API key contains whitespace. Please check your API key in the settings and ensure it doesn't have any spaces or line breaks.";
+          }
+          
+          if (!openRouterConfig.apiKey.startsWith("sk-or-v1-")) {
+            return "Authentication error with OpenRouter API. Your API key has an invalid format. Make sure it starts with 'sk-or-v1-'.";
+          }
+          
+          return `Authentication error with OpenRouter API. Please check your API key in the settings and ensure it is valid and not expired. You may need to regenerate a new key at openrouter.ai.`;
         } else if (statusCode === 429) {
           return "Rate limit exceeded. Please try again later or consider upgrading your OpenRouter plan.";
         } else if (error.code === 'ECONNABORTED') {
