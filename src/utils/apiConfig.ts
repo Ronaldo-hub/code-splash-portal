@@ -28,7 +28,7 @@ interface XApiConfig {
 
 // Default configurations with your API keys
 export const openRouterConfig: OpenRouterConfig = {
-  apiKey: "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",
+  apiKey: "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",
   baseUrl: "https://openrouter.ai/api/v1/chat/completions",
   model: "deepseek/deepseek-chat",
   maxNewTokens: 300,
