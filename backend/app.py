@@ -3,6 +3,8 @@ from flask_cors import CORS
 import time
 from urllib.parse import quote  # Replace Werkzeug's url_quote with this
 from algosdk.v2client import indexer
+import os
+import requests
 
 # Import custom modules
 from voting import register_voter, create_election, add_proposal, cast_vote, submit_offline_vote, get_election_results
@@ -166,6 +168,37 @@ def results():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def get_ai_response(user_input):
+    """
+    Sends a user input to the Deepseek model via OpenRouter API and returns the model's reply.
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "OPENROUTER_API_KEY is not set in the environment variables.")
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "user", "content": user_input}
+        ]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    except requests.exceptions.RequestException as e:
+        # Log or handle the error as needed
+        raise RuntimeError(f"Failed to get response from OpenRouter API: {e}")
 
 
 if __name__ == '__main__':
