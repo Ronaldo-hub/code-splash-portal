@@ -3,20 +3,13 @@ import axios from "axios";
 import { vectorDb } from "./vectorDb";
 import { toast } from "sonner";
 import { openRouterConfig, ragConfig } from "./apiConfig";
-
-interface GenerationOptions {
-  max_new_tokens?: number;
-  temperature?: number;
-  top_p?: number;
-  top_k?: number;
-}
+import { GenerationOptions, DocumentWithSource } from "./types/ragTypes";
+import { GreetingHandler } from "./handlers/greetingHandler";
+import { ResponseFormatter } from "./handlers/responseFormatter";
+import { FallbackHandler } from "./handlers/fallbackHandler";
 
 export class RagService {
   private isModelLoading: boolean = false;
-  
-  constructor() {
-    // No need to load a model as we'll use OpenRouter API
-  }
   
   public isLoading(): boolean {
     return this.isModelLoading;
@@ -24,147 +17,162 @@ export class RagService {
   
   public async generateResponse(query: string, options: GenerationOptions = {}): Promise<string> {
     try {
-      if (!openRouterConfig.apiKey) {
-        console.log("No API key configured for OpenRouter");
-        return "API key not configured. Please set up OpenRouter API credentials in the settings.";
+      // Validate API key
+      if (!openRouterConfig.apiKey || openRouterConfig.apiKey.trim() === "") {
+        console.error("No API key configured for OpenRouter");
+        return "I need to be configured with a valid API key to help you better. Please check the settings.";
+      }
+      
+      // Log API key (first 10 chars) for debugging
+      const trimmedApiKey = openRouterConfig.apiKey.trim();
+      console.log(`Using API key: ${trimmedApiKey.substring(0, 10)}...`);
+      console.log(`Full API key length: ${trimmedApiKey.length} characters`);
+      
+      // Check if the query is a greeting
+      if (GreetingHandler.isGreeting(query.toLowerCase().trim())) {
+        console.log("Detected greeting, using greeting handler");
+        return GreetingHandler.getGreetingResponse();
       }
       
       // Retrieve relevant documents
+      console.log(`Searching vector DB for query: "${query}"`);
       const relevantDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
+      console.log(`Found ${relevantDocs.length} relevant documents`);
       
       if (relevantDocs.length === 0) {
-        console.log("No relevant documents found");
-        return "I couldn't find specific information, but the Khoisan Voice is dedicated to cultural preservation—learn more at https://khoisanvoice.carrd.co/. Thanks for asking!";
+        console.log("No relevant documents found, using fallback handler");
+        return FallbackHandler.getContextualFallback(query.toLowerCase().trim());
       }
       
-      // Construct context from retrieved documents
+      // Format context for prompt
       const context = relevantDocs
         .map(doc => `${doc.text} (Source: ${doc.source})`)
         .join("\n\n");
       
-      // Construct RAG prompt
-      const ragPrompt = `
-You are an assistant for the Khoisan Voice initiative. Your responses should be respectful, empathetic, and professional, reflecting values of unity, heritage, and empowerment.
-
-Context information from Khoisan Voice sources:
-${context}
-
-Based on the above context, please answer the following question about the Khoisan Voice initiative. 
-If the information isn't provided in the context, say you don't have that specific information but suggest what might be relevant from what you do know.
-End your response with a motivational statement that encourages engagement with the cause.
-
-User question: ${query}
-
-Answer (3-5 sentences max):`;
-
+      // Create RAG prompt
+      const ragPrompt = ResponseFormatter.createRagPrompt(context, query);
+      
       console.log("Sending request to OpenRouter API...");
       console.log(`Using model: ${openRouterConfig.model}`);
+      console.log(`API Base URL: ${openRouterConfig.baseUrl}`);
       
-      // Call OpenRouter API
+      // FIXED: Ensure API key is properly formatted in the Authorization header
+      // The API key needs to be properly trimmed and the header must be formatted correctly
+      const headers = {
+        "Authorization": `Bearer ${trimmedApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": window.location.href || "https://khoisanvoice.app",
+        "X-Title": "Khoisan Voice Assistant"
+      };
+      
+      // Log request headers (without the full API key)
+      console.log("Request headers:", {
+        "Content-Type": headers["Content-Type"],
+        "HTTP-Referer": headers["HTTP-Referer"],
+        "X-Title": headers["X-Title"],
+        "Authorization": "Bearer [REDACTED]"
+      });
+      
+      // Prepare request body
+      const requestBody = {
+        model: openRouterConfig.model,
+        messages: [
+          { role: "system", content: "You are a helpful assistant for the Khoisan Voice initiative." },
+          { role: "user", content: ragPrompt }
+        ],
+        max_tokens: options.max_new_tokens || openRouterConfig.maxNewTokens,
+        temperature: options.temperature || openRouterConfig.temperature,
+      };
+      
+      // Log request body (excluding the full prompt for privacy)
+      console.log("Request body:", {
+        model: requestBody.model,
+        max_tokens: requestBody.max_tokens,
+        temperature: requestBody.temperature,
+        messages: [
+          { role: "system", content: "[SYSTEM PROMPT]" },
+          { role: "user", content: "[USER QUERY]" }
+        ]
+      });
+      
+      // FIXED: Make API request with explicit headers and timeout
       const response = await axios.post(
         openRouterConfig.baseUrl,
+        requestBody,
         {
-          model: openRouterConfig.model,
-          messages: [
-            { role: "system", content: "You are a helpful assistant for the Khoisan Voice initiative." },
-            { role: "user", content: ragPrompt }
-          ],
-          max_tokens: options.max_new_tokens || openRouterConfig.maxNewTokens,
-          temperature: options.temperature || openRouterConfig.temperature,
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${openRouterConfig.apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.href, // Required by OpenRouter
-            "X-Title": "Khoisan Voice Assistant" // Optional but helpful for tracking
-          }
+          headers: headers,
+          timeout: 30000 // 30 second timeout
         }
       );
       
-      // Extract the assistant's message
+      console.log("Received response from OpenRouter API");
+      console.log("Response status:", response.status);
+      
       if (response.data.choices && response.data.choices.length > 0) {
         const generatedText = response.data.choices[0].message.content.trim();
-        
-        // Add citations if they don't exist
-        const responseWithCitations = this.ensureCitations(generatedText, relevantDocs);
-        
-        return responseWithCitations;
+        console.log("Generated response length:", generatedText.length);
+        return ResponseFormatter.ensureCitations(generatedText, relevantDocs);
       } else {
-        console.log("No response generated from OpenRouter");
+        console.error("No valid response content in API response:", response.data);
         return "I couldn't generate a response at this time. Please try again later or visit https://khoisanvoice.carrd.co/ for more information about the Khoisan Voice initiative.";
       }
     } catch (error) {
       console.error("Error generating response:", error);
       
-      // More detailed error handling
       if (axios.isAxiosError(error)) {
+        // Enhanced error logging for Axios errors
         const statusCode = error.response?.status;
         const errorMessage = error.response?.data?.error?.message || error.message;
+        const errorType = error.response?.data?.error?.type;
+        const errorCode = error.code;
         
-        console.error(`API error: ${statusCode} - ${errorMessage}`);
+        console.error(`API error details:
+          Status: ${statusCode}
+          Message: ${errorMessage}
+          Type: ${errorType}
+          Code: ${errorCode}
+          Response data: ${JSON.stringify(error.response?.data || {})}
+        `);
         
         if (statusCode === 401 || statusCode === 403) {
-          return "Authentication error with OpenRouter API. Please check your API key in the settings.";
+          // FIXED: Better authentication error handling and detection of API key issues
+          const trimmedKey = openRouterConfig.apiKey.trim();
+          const keyLength = trimmedKey.length;
+          const keyStart = trimmedKey.substring(0, 10);
+          console.error(`Authentication error with key starting with ${keyStart}... (length: ${keyLength})`);
+          
+          // Check for specific format or character issues in the API key
+          if (trimmedKey.includes(" ") || trimmedKey.includes("\n")) {
+            return "Authentication error with OpenRouter API. Your API key contains whitespace. Please check your API key in the settings and ensure it doesn't have any spaces or line breaks.";
+          }
+          
+          if (!trimmedKey.startsWith("sk-or-v1-")) {
+            return "Authentication error with OpenRouter API. Your API key has an invalid format. Make sure it starts with 'sk-or-v1-'.";
+          }
+          
+          return `Authentication error with OpenRouter API. Please check your API key in the settings and ensure it is valid and not expired. You may need to regenerate a new key at openrouter.ai.`;
         } else if (statusCode === 429) {
           return "Rate limit exceeded. Please try again later or consider upgrading your OpenRouter plan.";
+        } else if (error.code === 'ECONNABORTED') {
+          return "The request to the AI service timed out. Please try again.";
+        } else if (error.code === 'ERR_NETWORK') {
+          return "Network error when connecting to the AI service. Please check your internet connection and try again.";
         } else {
           console.error(`OpenRouter API error: ${errorMessage}`);
-          return `Error connecting to the AI service. Please try again later. (Error: ${statusCode || 'Unknown'})`;
+          return `Error connecting to the AI service. Please try again later. (Error: ${statusCode || errorCode || 'Unknown'})`;
         }
       }
       
-      // Fallback when OpenRouter is not available - use predefined responses based on keywords
-      console.log("Using fallback response mechanism for query:", query);
-      return this.getFallbackResponse(query, relevantDocs);
+      try {
+        console.log("Trying to generate fallback response...");
+        const fallbackDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
+        return FallbackHandler.getFallbackResponse(query, fallbackDocs);
+      } catch (fallbackError) {
+        console.error("Error generating fallback response:", fallbackError);
+        return FallbackHandler.getFallbackResponse(query, []);
+      }
     }
-  }
-  
-  // Provide a fallback response based on keywords in the user's query
-  private getFallbackResponse(query: string, docs: any[]): string {
-    const queryLower = query.toLowerCase();
-    
-    // Provide responses for common mandate-related topics
-    if (queryLower.includes("land") || queryLower.includes("sovereignty")) {
-      return "Supporting the Khoisan mandate on land sovereignty is crucial as it seeks to restore ancestral territories that were unjustly taken during colonization. This includes complete land ownership, mineral rights, and maritime resource access. Land sovereignty is fundamental to the Khoisan people's cultural survival and economic independence. Join us in advocating for this historical justice! (Source: Khoisan Mandate)";
-    }
-    
-    if (queryLower.includes("culture") || queryLower.includes("language") || queryLower.includes("recognition")) {
-      return "Supporting the Khoisan cultural recognition mandate is essential because it aims to preserve endangered languages with fewer than 100 speakers remaining and eliminate colonial classifications that erase indigenous identity. Cultural recognition ensures the preservation of ancient knowledge and traditions for future generations. Together, we can help revitalize this irreplaceable heritage! (Source: https://khoisanvoice.carrd.co/)";
-    }
-    
-    if (queryLower.includes("representation") || queryLower.includes("parliament") || queryLower.includes("political")) {
-      return "The Khoisan political representation mandate deserves support because it calls for direct proportional parliamentary representation and veto power on legislation affecting Khoisan territories. Despite constitutional recognition in some countries, practical implementation of Khoisan rights remains severely limited. Your advocacy helps ensure indigenous voices are heard in decisions that affect their future! (Source: Khoisan Mandate)";
-    }
-    
-    if (queryLower.includes("financial") || queryLower.includes("reparation") || queryLower.includes("compensation")) {
-      return "Supporting the financial reparation mandate is important as it establishes mechanisms to address centuries of economic injustice against the Khoisan people. This includes a dedicated national fund for community development and transparent compensation for historical damages. Economic justice is a crucial step toward healing and rebuilding. Stand with us in this vital cause! (Source: Khoisan Mandate)";
-    }
-    
-    if (queryLower.includes("support") || queryLower.includes("important") || queryLower.includes("why")) {
-      return "Supporting the Khoisan mandate is crucial because it addresses historical injustices against indigenous people who have lived in Southern Africa for 140,000 years but faced land dispossession, cultural erasure, and systematic marginalization. The mandate seeks to restore land sovereignty, cultural recognition, political representation, and economic justice through reparations. By supporting this cause, you contribute to healing historical wounds and creating a more just society. Join us in this important movement for indigenous rights! (Source: Khoisan Mandate)";
-    }
-    
-    // Default fallback response if no keywords match
-    return "The Khoisan mandate represents a comprehensive approach to addressing historical injustices faced by the indigenous people of Southern Africa. It covers land sovereignty, cultural recognition, political representation, and financial reparation. Supporting this mandate helps promote justice, dignity, and self-determination for a people whose rights have been systematically violated for centuries. Learn more at https://khoisanvoice.carrd.co/ and join our movement for indigenous rights!";
-  }
-  
-  // Ensure the response has citations
-  private ensureCitations(text: string, docs: any[]): string {
-    // If text already has citations, return as is
-    if (text.includes("Source:") || text.includes("(Source:")) {
-      return text;
-    }
-    
-    // Add citation to the main source
-    if (docs.length > 0) {
-      const mainSource = docs[0].source;
-      return `${text}\n\n(Source: ${mainSource})`;
-    }
-    
-    return text;
   }
 }
 
-// Create singleton instance
 export const ragService = new RagService();

@@ -13,7 +13,7 @@ export interface Message {
 export const initialMessages: Message[] = [
   {
     role: "assistant",
-    content: "Hello! I'm your AI assistant focused on the Khoisan First Nations mandate. I can explain our position on land sovereignty, cultural recognition, representation, and financial reparation. How can I help you understand our cause today?"
+    content: "Greetings! I'm your dedicated AI assistant for understanding and supporting the Khoisan First Nations mandate. I can explain our position on:\n\n• Land sovereignty\n• Cultural recognition\n• Political representation\n• Financial reparation\n\nHow can I assist you today? Feel free to ask me anything about our cause!"
   }
 ];
 
@@ -25,6 +25,8 @@ export const loadAIModel = async (): Promise<any> => {
   // We're just returning a function that will use our RAG service
   return async (userInput: string, options: any) => {
     try {
+      console.log("Generating response using RAG service");
+      
       const response = await ragService.generateResponse(userInput, {
         max_new_tokens: options.max_new_tokens,
         temperature: options.temperature,
@@ -38,7 +40,7 @@ export const loadAIModel = async (): Promise<any> => {
       console.error("Error generating response:", error);
       toast.error("Failed to generate response");
       return [{
-        generated_text: userInput + " I'm having trouble processing your request right now. Please try again later."
+        generated_text: userInput + " I'm having trouble processing your request right now. Please try again later or check the API settings."
       }];
     }
   };
