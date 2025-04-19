@@ -24,8 +24,9 @@ export class RagService {
       }
       
       // Log API key (first 10 chars) for debugging
-      console.log(`Using API key: ${openRouterConfig.apiKey.substring(0, 10)}...`);
-      console.log(`Full API key length: ${openRouterConfig.apiKey.length} characters`);
+      const trimmedApiKey = openRouterConfig.apiKey.trim();
+      console.log(`Using API key: ${trimmedApiKey.substring(0, 10)}...`);
+      console.log(`Full API key length: ${trimmedApiKey.length} characters`);
       
       // Check if the query is a greeting
       if (GreetingHandler.isGreeting(query.toLowerCase().trim())) {
@@ -55,22 +56,20 @@ export class RagService {
       console.log(`Using model: ${openRouterConfig.model}`);
       console.log(`API Base URL: ${openRouterConfig.baseUrl}`);
       
-      // Prepare request configuration with detailed headers
-      // Fix: Ensure proper formatting of Authorization header
-      const requestConfig = {
-        headers: {
-          "Authorization": `Bearer ${openRouterConfig.apiKey.trim()}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": window.location.href,
-          "X-Title": "Khoisan Voice Assistant"
-        }
+      // FIXED: Ensure API key is properly formatted in the Authorization header
+      // The API key needs to be properly trimmed and the header must be formatted correctly
+      const headers = {
+        "Authorization": `Bearer ${trimmedApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": window.location.href || "https://khoisanvoice.app",
+        "X-Title": "Khoisan Voice Assistant"
       };
       
-      // Log request configuration (without sensitive data)
+      // Log request headers (without the full API key)
       console.log("Request headers:", {
-        "Content-Type": requestConfig.headers["Content-Type"],
-        "HTTP-Referer": requestConfig.headers["HTTP-Referer"],
-        "X-Title": requestConfig.headers["X-Title"],
+        "Content-Type": headers["Content-Type"],
+        "HTTP-Referer": headers["HTTP-Referer"],
+        "X-Title": headers["X-Title"],
         "Authorization": "Bearer [REDACTED]"
       });
       
@@ -96,12 +95,12 @@ export class RagService {
         ]
       });
       
-      // Make API request with timeout
+      // FIXED: Make API request with explicit headers and timeout
       const response = await axios.post(
         openRouterConfig.baseUrl,
         requestBody,
         {
-          ...requestConfig,
+          headers: headers,
           timeout: 30000 // 30 second timeout
         }
       );
@@ -136,16 +135,18 @@ export class RagService {
         `);
         
         if (statusCode === 401 || statusCode === 403) {
-          const keyLength = openRouterConfig.apiKey.length;
-          const keyStart = openRouterConfig.apiKey.substring(0, 10);
+          // FIXED: Better authentication error handling and detection of API key issues
+          const trimmedKey = openRouterConfig.apiKey.trim();
+          const keyLength = trimmedKey.length;
+          const keyStart = trimmedKey.substring(0, 10);
           console.error(`Authentication error with key starting with ${keyStart}... (length: ${keyLength})`);
           
           // Check for specific format or character issues in the API key
-          if (openRouterConfig.apiKey.includes(" ") || openRouterConfig.apiKey.includes("\n")) {
+          if (trimmedKey.includes(" ") || trimmedKey.includes("\n")) {
             return "Authentication error with OpenRouter API. Your API key contains whitespace. Please check your API key in the settings and ensure it doesn't have any spaces or line breaks.";
           }
           
-          if (!openRouterConfig.apiKey.startsWith("sk-or-v1-")) {
+          if (!trimmedKey.startsWith("sk-or-v1-")) {
             return "Authentication error with OpenRouter API. Your API key has an invalid format. Make sure it starts with 'sk-or-v1-'.";
           }
           
