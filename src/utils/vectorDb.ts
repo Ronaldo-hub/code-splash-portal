@@ -15,6 +15,8 @@ export class VectorDatabase {
   private documents: DocumentChunk[] = [];
   private embeddingModel: any = null;
   private isModelLoading: boolean = false;
+  private modelLoadAttempts: number = 0;
+  private readonly MAX_LOAD_ATTEMPTS = 3;
 
   constructor() {
     this.loadEmbeddingModel();
@@ -26,24 +28,50 @@ export class VectorDatabase {
     this.isModelLoading = true;
     try {
       console.log("Loading embedding model...");
-      // Using a higher quality embedding model
+      
+      // Using a smaller, more reliable model for embeddings
       this.embeddingModel = await pipeline(
         "feature-extraction",
-        "Xenova/all-MiniLM-L6-v2"
+        "Xenova/all-MiniLM-L6-v2",
+        { 
+          quantized: true, // Use quantized model for better performance
+          progress_callback: (progress) => {
+            console.log(`Embedding model loading progress: ${Math.round(progress.progress * 100)}%`);
+          }
+        }
       );
+      
+      this.modelLoadAttempts = 0; // Reset attempts on successful load
       console.log("Embedding model loaded successfully");
     } catch (error) {
-      console.error("Error loading embedding model:", error);
+      this.modelLoadAttempts++;
+      console.error(`Error loading embedding model (attempt ${this.modelLoadAttempts}/${this.MAX_LOAD_ATTEMPTS}):`, error);
+      
+      if (this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
+        console.log(`Retrying embedding model load in 3 seconds...`);
+        // Retry after a delay
+        setTimeout(() => {
+          this.isModelLoading = false;
+          this.loadEmbeddingModel();
+        }, 3000);
+      } else {
+        console.error("Max embedding model load attempts reached. Using fallback approach.");
+      }
     } finally {
-      this.isModelLoading = false;
+      if (this.modelLoadAttempts >= this.MAX_LOAD_ATTEMPTS || this.embeddingModel) {
+        this.isModelLoading = false;
+      }
     }
   }
 
   async addDocument(doc: Omit<DocumentChunk, 'embedding'>) {
-    await this.loadEmbeddingModel();
+    // Try to ensure model is loaded
+    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
+      await this.loadEmbeddingModel();
+    }
     
     if (!this.embeddingModel) {
-      console.error("Embedding model not loaded, storing document without embedding");
+      console.warn("Embedding model not loaded, storing document without embedding");
       this.documents.push({...doc, embedding: []});
       return;
     }
@@ -58,7 +86,7 @@ export class VectorDatabase {
       // Store document with its embedding
       this.documents.push({
         ...doc,
-        embedding: embedding.tolist()[0] // Get the array from tensor
+        embedding: Array.from(embedding.data)
       });
       
       console.log(`Added document: ${doc.id}`);
@@ -70,41 +98,59 @@ export class VectorDatabase {
   }
 
   async addDocuments(docs: Omit<DocumentChunk, 'embedding'>[]) {
+    // Ensure model is loaded first before processing multiple documents
+    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
+      await this.loadEmbeddingModel();
+    }
+    
     for (const doc of docs) {
       await this.addDocument(doc);
     }
   }
 
   async similaritySearch(query: string, topK: number = 3): Promise<DocumentChunk[]> {
-    if (!this.embeddingModel) {
+    // Ensure model is loaded
+    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
       await this.loadEmbeddingModel();
-      if (!this.embeddingModel) {
-        console.error("Embedding model not loaded, returning random documents");
-        // Return random documents if embedding model is not available
-        return this.documents.slice(0, Math.min(topK, this.documents.length));
-      }
     }
     
-    // Get query embedding
-    const queryEmbedding = await this.embeddingModel(query, {
-      pooling: "mean", 
-      normalize: true
-    });
-    const queryVector = queryEmbedding.tolist()[0];
+    if (!this.embeddingModel) {
+      console.warn("Embedding model not loaded, returning random documents");
+      // Return random documents if embedding model is not available
+      return this.documents
+        .sort(() => 0.5 - Math.random())
+        .slice(0, Math.min(topK, this.documents.length));
+    }
     
-    // Calculate cosine similarity between query and all documents
-    const scoredDocs = this.documents
-      .filter(doc => doc.embedding && doc.embedding.length > 0)
-      .map(doc => ({
-        doc,
-        score: this.cosineSimilarity(queryVector, doc.embedding!),
-        // Apply weighting based on source (70% for website, 30% for X)
-        weightedScore: this.getSourceWeight(doc.source) * this.cosineSimilarity(queryVector, doc.embedding!)
-      }))
-      .sort((a, b) => b.weightedScore - a.weightedScore)
-      .slice(0, topK);
-    
-    return scoredDocs.map(item => item.doc);
+    try {
+      // Get query embedding
+      const queryEmbedding = await this.embeddingModel(query, {
+        pooling: "mean", 
+        normalize: true
+      });
+      
+      const queryVector = Array.from(queryEmbedding.data);
+      
+      // Calculate cosine similarity between query and all documents
+      const scoredDocs = this.documents
+        .filter(doc => doc.embedding && doc.embedding.length > 0)
+        .map(doc => ({
+          doc,
+          score: this.cosineSimilarity(queryVector, doc.embedding!),
+          // Apply weighting based on source (70% for website, 30% for X)
+          weightedScore: this.getSourceWeight(doc.source) * this.cosineSimilarity(queryVector, doc.embedding!)
+        }))
+        .sort((a, b) => b.weightedScore - a.weightedScore)
+        .slice(0, topK);
+      
+      return scoredDocs.map(item => item.doc);
+    } catch (error) {
+      console.error("Error in similarity search:", error);
+      // Fallback to returning random documents
+      return this.documents
+        .sort(() => 0.5 - Math.random())
+        .slice(0, Math.min(topK, this.documents.length));
+    }
   }
 
   // Apply source weighting: 70% for website, 30% for X
@@ -150,6 +196,14 @@ export class VectorDatabase {
 
   getDocumentCount(): number {
     return this.documents.length;
+  }
+  
+  isModelReady(): boolean {
+    return !!this.embeddingModel;
+  }
+  
+  isLoadingModel(): boolean {
+    return this.isModelLoading;
   }
 }
 
