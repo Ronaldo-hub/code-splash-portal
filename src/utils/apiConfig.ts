@@ -28,10 +28,10 @@ interface XApiConfig {
 
 // Default configurations with your API keys
 export const openRouterConfig: OpenRouterConfig = {
-  apiKey: "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",
+  apiKey: "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",
   baseUrl: "https://openrouter.ai/api/v1/chat/completions",
-  model: "deepseek/deepseek-chat",
-  maxNewTokens: 300,
+  model: "meta-llama/llama-3.1-8b-instruct",
+  maxNewTokens: 500,
   temperature: 0.7,
   availableModels: [
     {
@@ -112,6 +112,22 @@ export const setOpenRouterCredentials = (
   if (model) openRouterConfig.model = model;
   if (temperature !== undefined) openRouterConfig.temperature = temperature;
   if (maxNewTokens) openRouterConfig.maxNewTokens = maxNewTokens;
+};
+
+// Add the missing setXApiCredentials function
+export const setXApiCredentials = (
+  apiKey: string,
+  apiKeySecret: string,
+  accessToken: string,
+  accessTokenSecret: string,
+  bearerToken: string
+) => {
+  console.log("Setting X API credentials...");
+  xApiConfig.apiKey = apiKey;
+  xApiConfig.apiKeySecret = apiKeySecret;
+  xApiConfig.accessToken = accessToken;
+  xApiConfig.accessTokenSecret = accessTokenSecret;
+  xApiConfig.bearerToken = bearerToken;
 };
 
 // Export all configurations for easy access
