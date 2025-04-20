@@ -197,12 +197,20 @@ export const setHuggingFaceCredentials = (
 
 // Hugging Face API configuration
 export const huggingFaceConfig: HuggingFaceConfig = {
-  apiKey: '', // You'll need to set this 
+  apiKey: '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', // Added API key
   baseUrl: 'https://api-inference.huggingface.co/models/',
-  model: 'distilbert-base-uncased-finetuned-sst-2-english', // Example model, replace with your preferred model
+  model: 'distilbert-base-uncased-finetuned-sst-2-english', // Example model, you can change this
   maxNewTokens: 150,
   temperature: 0.7
 };
+
+// Immediately save the configuration to localStorage
+try {
+  localStorage.setItem('huggingFaceConfig', JSON.stringify(huggingFaceConfig));
+  console.log("Hugging Face API key saved to localStorage");
+} catch (error) {
+  console.error('Failed to save Hugging Face configuration:', error);
+}
 
 // Export all configurations for easy access
 export const getAllConfigurations = () => {
