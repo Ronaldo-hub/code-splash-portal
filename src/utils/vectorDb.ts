@@ -1,172 +1,204 @@
 
-import { pipeline } from "@huggingface/transformers";
+import { pipeline, env } from "@huggingface/transformers";
+import { toast } from "sonner";
+import { DocumentWithSource } from "./types/ragTypes";
 
-// Interface for our vector database entries
-export interface DocumentChunk {
-  id: string;
-  text: string;
-  source: string;
-  date: string;
+// Configure transformers.js to use CDN
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+// Set a small embedding model that works well for the Khoisan content
+const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2000;
+
+export interface DocumentChunk extends DocumentWithSource {
   embedding?: number[];
 }
 
-// Simple in-memory vector database
-export class VectorDatabase {
+class VectorDatabase {
   private documents: DocumentChunk[] = [];
-  private embeddingModel: any = null;
-  private isModelLoading: boolean = false;
-  private modelLoadAttempts: number = 0;
-  private readonly MAX_LOAD_ATTEMPTS = 3;
+  private embeddingPipeline: any = null;
+  private isInitializing: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor() {
-    this.loadEmbeddingModel();
+    this.initEmbeddingModel();
   }
 
-  private async loadEmbeddingModel() {
-    if (this.embeddingModel || this.isModelLoading) return;
+  private async initEmbeddingModel(attempt: number = 1): Promise<void> {
+    if (this.isInitializing) {
+      return this.initializationPromise;
+    }
+
+    this.isInitializing = true;
     
-    this.isModelLoading = true;
-    try {
-      console.log("Loading embedding model...");
-      
-      // Using a smaller, more reliable model for embeddings
-      this.embeddingModel = await pipeline(
-        "feature-extraction",
-        "Xenova/all-MiniLM-L6-v2",
-        { 
-          quantized: true, // Use quantized model for better performance
-          progress_callback: (progress) => {
-            console.log(`Embedding model loading progress: ${Math.round(progress.progress * 100)}%`);
+    this.initializationPromise = new Promise<void>(async (resolve, reject) => {
+      try {
+        console.log(`Initializing embedding model (attempt ${attempt}/${MAX_RETRY_ATTEMPTS})...`);
+        toast.info("Loading Khoisan knowledge base...");
+
+        // Use the feature-extraction pipeline with the compact model
+        this.embeddingPipeline = await pipeline(
+          "feature-extraction",
+          EMBEDDING_MODEL,
+          {
+            revision: "main",
+            // Progress callback to show loading status
+            progress_callback: (info: any) => {
+              if (info.status === 'progress') {
+                const percentComplete = Math.round(info.value * 100);
+                console.log(`Loading model: ${percentComplete}%`);
+              }
+            }
           }
+        );
+
+        console.log("Embedding model initialized successfully");
+        toast.success("Khoisan knowledge base ready");
+        this.isInitializing = false;
+        resolve();
+      } catch (error) {
+        console.error("Error initializing embedding model:", error);
+        
+        if (attempt < MAX_RETRY_ATTEMPTS) {
+          console.log(`Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
+          setTimeout(() => {
+            this.isInitializing = false;
+            this.initEmbeddingModel(attempt + 1)
+              .then(resolve)
+              .catch(reject);
+          }, RETRY_DELAY_MS);
+        } else {
+          toast.error("Failed to load Khoisan knowledge base");
+          this.isInitializing = false;
+          reject(error);
         }
-      );
+      }
+    });
+
+    return this.initializationPromise;
+  }
+
+  public async addDocuments(docs: DocumentChunk[]): Promise<void> {
+    // Initialize the model if it's not already initialized
+    if (!this.embeddingPipeline) {
+      try {
+        await this.initEmbeddingModel();
+      } catch (error) {
+        console.error("Failed to initialize embedding model for adding documents:", error);
+        toast.error("Unable to add documents to knowledge base");
+        return;
+      }
+    }
+
+    try {
+      // Process documents in batches to avoid overloading the browser
+      const batchSize = 5;
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = docs.slice(i, i + batchSize);
+        
+        // Create embeddings for each document in parallel
+        await Promise.all(batch.map(async (doc) => {
+          if (!doc.text) {
+            console.warn("Document missing text content:", doc);
+            return;
+          }
+
+          try {
+            // Create embedding for the document text
+            const result = await this.embeddingPipeline(doc.text, {
+              pooling: "mean",
+              normalize: true
+            });
+            
+            // Extract the embedding data
+            const embedding = Array.from(result.data) as number[];
+            
+            // Store the document with its embedding
+            this.documents.push({
+              ...doc,
+              embedding
+            });
+            
+            console.log(`Added document: ${doc.id}`);
+          } catch (error) {
+            console.error(`Failed to create embedding for document ${doc.id}:`, error);
+          }
+        }));
+
+        console.log(`Processed batch ${i / batchSize + 1}/${Math.ceil(docs.length / batchSize)}`);
+      }
       
-      this.modelLoadAttempts = 0; // Reset attempts on successful load
-      console.log("Embedding model loaded successfully");
+      console.log(`Added ${this.documents.length} documents to vector database`);
     } catch (error) {
-      this.modelLoadAttempts++;
-      console.error(`Error loading embedding model (attempt ${this.modelLoadAttempts}/${this.MAX_LOAD_ATTEMPTS}):`, error);
-      
-      if (this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
-        console.log(`Retrying embedding model load in 3 seconds...`);
-        // Retry after a delay
-        setTimeout(() => {
-          this.isModelLoading = false;
-          this.loadEmbeddingModel();
-        }, 3000);
-      } else {
-        console.error("Max embedding model load attempts reached. Using fallback approach.");
-      }
-    } finally {
-      if (this.modelLoadAttempts >= this.MAX_LOAD_ATTEMPTS || this.embeddingModel) {
-        this.isModelLoading = false;
-      }
+      console.error("Error adding documents:", error);
+      toast.error("Failed to index Khoisan knowledge base");
     }
   }
 
-  async addDocument(doc: Omit<DocumentChunk, 'embedding'>) {
-    // Try to ensure model is loaded
-    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
-      await this.loadEmbeddingModel();
+  public clearDocuments(): void {
+    this.documents = [];
+    console.log("Vector database cleared");
+  }
+
+  public getDocumentCount(): number {
+    return this.documents.length;
+  }
+
+  public async similaritySearch(query: string, k: number = 3): Promise<DocumentWithSource[]> {
+    if (this.documents.length === 0) {
+      console.warn("No documents in vector database for similarity search");
+      return [];
     }
-    
-    if (!this.embeddingModel) {
-      console.warn("Embedding model not loaded, storing document without embedding");
-      this.documents.push({...doc, embedding: []});
-      return;
+
+    if (!this.embeddingPipeline) {
+      try {
+        await this.initEmbeddingModel();
+      } catch (error) {
+        console.error("Failed to initialize embedding model for similarity search:", error);
+        return [];
+      }
     }
-    
+
     try {
-      // Generate embedding for the document text
-      const embedding = await this.embeddingModel(doc.text, {
-        pooling: "mean", 
+      // Create embedding for the query
+      const result = await this.embeddingPipeline(query, {
+        pooling: "mean",
         normalize: true
       });
       
-      // Store document with its embedding
-      this.documents.push({
-        ...doc,
-        embedding: Array.from(embedding.data)
+      const queryEmbedding = Array.from(result.data) as number[];
+
+      // Calculate cosine similarity for each document
+      const similarities = this.documents.map((doc, index) => {
+        if (!doc.embedding) {
+          return { index, similarity: 0 };
+        }
+        
+        const similarity = this.cosineSimilarity(queryEmbedding, doc.embedding);
+        return { index, similarity };
       });
-      
-      console.log(`Added document: ${doc.id}`);
-    } catch (error) {
-      console.error("Error generating embedding:", error);
-      // Still store the document even without embedding
-      this.documents.push({...doc, embedding: []});
-    }
-  }
 
-  async addDocuments(docs: Omit<DocumentChunk, 'embedding'>[]) {
-    // Ensure model is loaded first before processing multiple documents
-    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
-      await this.loadEmbeddingModel();
-    }
-    
-    for (const doc of docs) {
-      await this.addDocument(doc);
-    }
-  }
+      // Sort by similarity (highest first) and take top k
+      similarities.sort((a, b) => b.similarity - a.similarity);
+      const topK = similarities.slice(0, k);
 
-  async similaritySearch(query: string, topK: number = 3): Promise<DocumentChunk[]> {
-    // Ensure model is loaded
-    if (!this.embeddingModel && !this.isModelLoading && this.modelLoadAttempts < this.MAX_LOAD_ATTEMPTS) {
-      await this.loadEmbeddingModel();
-    }
-    
-    if (!this.embeddingModel) {
-      console.warn("Embedding model not loaded, returning random documents");
-      // Return random documents if embedding model is not available
-      return this.documents
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.min(topK, this.documents.length));
-    }
-    
-    try {
-      // Get query embedding
-      const queryEmbedding = await this.embeddingModel(query, {
-        pooling: "mean", 
-        normalize: true
+      // Return the top k documents
+      return topK.map(({ index }) => {
+        const { id, text, source, date } = this.documents[index];
+        return { id, text, source, date };
       });
-      
-      const queryVector = Array.from(queryEmbedding.data);
-      
-      // Calculate cosine similarity between query and all documents
-      const scoredDocs = this.documents
-        .filter(doc => doc.embedding && doc.embedding.length > 0)
-        .map(doc => ({
-          doc,
-          score: this.cosineSimilarity(queryVector, doc.embedding!),
-          // Apply weighting based on source (70% for website, 30% for X)
-          weightedScore: this.getSourceWeight(doc.source) * this.cosineSimilarity(queryVector, doc.embedding!)
-        }))
-        .sort((a, b) => b.weightedScore - a.weightedScore)
-        .slice(0, topK);
-      
-      return scoredDocs.map(item => item.doc);
     } catch (error) {
-      console.error("Error in similarity search:", error);
-      // Fallback to returning random documents
-      return this.documents
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.min(topK, this.documents.length));
+      console.error("Error during similarity search:", error);
+      return [];
     }
   }
 
-  // Apply source weighting: 70% for website, 30% for X
-  private getSourceWeight(source: string): number {
-    if (source.includes('khoisanvoice.carrd.co')) {
-      return 0.7; // Website content is weighted higher
-    } else if (source.includes('x.com') || source.includes('twitter.com')) {
-      return 0.3; // X posts weighted lower
-    }
-    return 0.5; // Default weight for other sources
-  }
-
-  // Calculate cosine similarity between two vectors
   private cosineSimilarity(vecA: number[], vecB: number[]): number {
     if (vecA.length !== vecB.length) {
-      throw new Error("Vectors must be of the same length");
+      console.error("Vectors must have the same length");
+      return 0;
     }
 
     let dotProduct = 0;
@@ -179,33 +211,11 @@ export class VectorDatabase {
       normB += vecB[i] * vecB[i];
     }
 
-    if (normA === 0 || normB === 0) {
-      return 0;
-    }
+    // Prevent division by zero
+    if (normA === 0 || normB === 0) return 0;
 
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
-
-  getAllDocuments(): DocumentChunk[] {
-    return this.documents;
-  }
-
-  clearDocuments() {
-    this.documents = [];
-  }
-
-  getDocumentCount(): number {
-    return this.documents.length;
-  }
-  
-  isModelReady(): boolean {
-    return !!this.embeddingModel;
-  }
-  
-  isLoadingModel(): boolean {
-    return this.isModelLoading;
-  }
 }
 
-// Create a singleton instance
 export const vectorDb = new VectorDatabase();

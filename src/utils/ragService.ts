@@ -7,6 +7,7 @@ import { GenerationOptions, DocumentWithSource } from "./types/ragTypes";
 import { GreetingHandler } from "./handlers/greetingHandler";
 import { ResponseFormatter } from "./handlers/responseFormatter";
 import { FallbackHandler } from "./handlers/fallbackHandler";
+import { ConversationalHandler } from "./handlers/conversationalHandler";
 
 export class RagService {
   private isModelLoading: boolean = false;
@@ -34,88 +35,44 @@ export class RagService {
         return GreetingHandler.getGreetingResponse();
       }
       
+      // Check for specific topic handlers first
+      // These provide better, more natural responses to common queries
+      const financialResponse = ConversationalHandler.handleFinancialReparationQuery(query);
+      if (financialResponse) {
+        console.log("Using financial reparation handler for response");
+        return financialResponse;
+      }
+      
+      const landResponse = ConversationalHandler.handleLandSovereigntyQuery(query);
+      if (landResponse) {
+        console.log("Using land sovereignty handler for response");
+        return landResponse;
+      }
+      
+      const culturalResponse = ConversationalHandler.handleCulturalRecognitionQuery(query);
+      if (culturalResponse) {
+        console.log("Using cultural recognition handler for response");
+        return culturalResponse;
+      }
+      
+      const politicalResponse = ConversationalHandler.handlePoliticalRepresentationQuery(query);
+      if (politicalResponse) {
+        console.log("Using political representation handler for response");
+        return politicalResponse;
+      }
+      
       // Retrieve relevant documents
       console.log(`Searching vector DB for query: "${query}"`);
       const relevantDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
       console.log(`Found ${relevantDocs.length} relevant documents`);
       
       if (relevantDocs.length === 0) {
-        console.log("No relevant documents found, using fallback handler");
-        return FallbackHandler.getContextualFallback(query.toLowerCase().trim());
+        console.log("No relevant documents found, using conversational handler");
+        return ConversationalHandler.createConversationalResponse(query, []);
       }
       
-      // Format context for prompt
-      const context = relevantDocs
-        .map(doc => `${doc.text} (Source: ${doc.source})`)
-        .join("\n\n");
-      
-      // Create RAG prompt
-      const ragPrompt = ResponseFormatter.createRagPrompt(context, query);
-      
-      console.log("Sending request to OpenRouter API...");
-      console.log(`Using model: ${openRouterConfig.model}`);
-      console.log(`API Base URL: ${openRouterConfig.baseUrl}`);
-      
-      // FIXED: Ensure API key is properly formatted in the Authorization header
-      // The API key needs to be properly trimmed and the header must be formatted correctly
-      const headers = {
-        "Authorization": `Bearer ${trimmedApiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": window.location.href || "https://khoisanvoice.app",
-        "X-Title": "Khoisan Voice Assistant"
-      };
-      
-      // Log request headers (without the full API key)
-      console.log("Request headers:", {
-        "Content-Type": headers["Content-Type"],
-        "HTTP-Referer": headers["HTTP-Referer"],
-        "X-Title": headers["X-Title"],
-        "Authorization": "Bearer [REDACTED]"
-      });
-      
-      // Prepare request body
-      const requestBody = {
-        model: openRouterConfig.model,
-        messages: [
-          { role: "system", content: "You are a helpful assistant for the Khoisan Voice initiative." },
-          { role: "user", content: ragPrompt }
-        ],
-        max_tokens: options.max_new_tokens || openRouterConfig.maxNewTokens,
-        temperature: options.temperature || openRouterConfig.temperature,
-      };
-      
-      // Log request body (excluding the full prompt for privacy)
-      console.log("Request body:", {
-        model: requestBody.model,
-        max_tokens: requestBody.max_tokens,
-        temperature: requestBody.temperature,
-        messages: [
-          { role: "system", content: "[SYSTEM PROMPT]" },
-          { role: "user", content: "[USER QUERY]" }
-        ]
-      });
-      
-      // FIXED: Make API request with explicit headers and timeout
-      const response = await axios.post(
-        openRouterConfig.baseUrl,
-        requestBody,
-        {
-          headers: headers,
-          timeout: 30000 // 30 second timeout
-        }
-      );
-      
-      console.log("Received response from OpenRouter API");
-      console.log("Response status:", response.status);
-      
-      if (response.data.choices && response.data.choices.length > 0) {
-        const generatedText = response.data.choices[0].message.content.trim();
-        console.log("Generated response length:", generatedText.length);
-        return ResponseFormatter.ensureCitations(generatedText, relevantDocs);
-      } else {
-        console.error("No valid response content in API response:", response.data);
-        return "I couldn't generate a response at this time. Please try again later or visit https://khoisanvoice.carrd.co/ for more information about the Khoisan Voice initiative.";
-      }
+      // Use our conversational handler for a more natural response
+      return ResponseFormatter.createConversationalResponse(query, relevantDocs);
     } catch (error) {
       console.error("Error generating response:", error);
       
@@ -143,33 +100,33 @@ export class RagService {
           
           // Check for specific format or character issues in the API key
           if (trimmedKey.includes(" ") || trimmedKey.includes("\n")) {
-            return "Authentication error with OpenRouter API. Your API key contains whitespace. Please check your API key in the settings and ensure it doesn't have any spaces or line breaks.";
+            return "I'm having trouble authenticating with my knowledge service. This might be due to an issue with spaces in the API key configuration. Could you try asking me something about the Khoisan mandate that doesn't require looking up specific details?";
           }
           
           if (!trimmedKey.startsWith("sk-or-v1-")) {
-            return "Authentication error with OpenRouter API. Your API key has an invalid format. Make sure it starts with 'sk-or-v1-'.";
+            return "I'm currently having an authentication issue with my knowledge service. While this gets fixed, may I ask what specifically interests you about the Khoisan mandate? I can share what I know about their key positions on land, culture, representation, and reparations.";
           }
           
-          return `Authentication error with OpenRouter API. Please check your API key in the settings and ensure it is valid and not expired. You may need to regenerate a new key at openrouter.ai.`;
+          return `I'm having trouble accessing my full knowledge base right now. In the meantime, I can tell you that the Khoisan mandate focuses on land sovereignty, cultural recognition, political representation, and financial reparation. Which of these areas would you like to explore?`;
         } else if (statusCode === 429) {
-          return "Rate limit exceeded. Please try again later or consider upgrading your OpenRouter plan.";
+          return "I'm getting a lot of requests right now. Let's take a moment before continuing our conversation about the Khoisan mandate. Which aspect interests you most - land rights, cultural recognition, political representation, or financial reparations?";
         } else if (error.code === 'ECONNABORTED') {
-          return "The request to the AI service timed out. Please try again.";
+          return "It's taking longer than expected to find that information. While we wait, I can tell you that the Khoisan mandate covers four main areas: land sovereignty, cultural recognition, political representation, and financial reparation. Which would you like to learn more about?";
         } else if (error.code === 'ERR_NETWORK') {
-          return "Network error when connecting to the AI service. Please check your internet connection and try again.";
+          return "I seem to be having connection issues at the moment. While that's being resolved, I'd be happy to chat about the Khoisan mandate based on what I already know. Would you like to hear about land sovereignty, cultural recognition, political representation, or financial reparation?";
         } else {
           console.error(`OpenRouter API error: ${errorMessage}`);
-          return `Error connecting to the AI service. Please try again later. (Error: ${statusCode || errorCode || 'Unknown'})`;
+          return `I'm having trouble accessing specific information right now. Let me share what I know about the Khoisan mandate: it focuses on restoring ancestral lands, preserving cultural heritage, ensuring political representation, and obtaining financial reparations. Which of these interests you most?`;
         }
       }
       
       try {
         console.log("Trying to generate fallback response...");
         const fallbackDocs = await vectorDb.similaritySearch(query, ragConfig.topK || 5);
-        return FallbackHandler.getFallbackResponse(query, fallbackDocs);
+        return ConversationalHandler.createConversationalResponse(query, fallbackDocs);
       } catch (fallbackError) {
         console.error("Error generating fallback response:", fallbackError);
-        return FallbackHandler.getFallbackResponse(query, []);
+        return ConversationalHandler.createConversationalResponse(query, []);
       }
     }
   }
