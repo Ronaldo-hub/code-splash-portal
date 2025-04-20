@@ -3,19 +3,31 @@ import { DocumentWithSource } from "../types/ragTypes";
 
 export class FallbackHandler {
   public static getContextualFallback(query: string): string {
-    if (query.includes('help') || query.includes('support')) {
+    const queryLower = query.toLowerCase();
+    
+    // Mandate-specific fallbacks
+    if (queryLower.includes("mandate") || queryLower.includes("vote")) {
+      return "The Khoisan mandate focuses on four key pillars: land sovereignty, cultural recognition, political representation, and financial reparation. Each addresses historical injustices faced by the indigenous Khoisan people. Which aspect would you like to explore further?";
+    }
+    
+    if (queryLower.includes('help') || queryLower.includes('support')) {
       return "I'm here to help you understand how to support the Khoisan mandate. We focus on four key areas: land sovereignty, cultural recognition, political representation, and financial reparation. Which aspect would you like to learn more about?";
     }
     
-    if (query.includes('thank') || query.includes('thanks')) {
+    if (queryLower.includes('thank') || queryLower.includes('thanks')) {
       return "You're welcome! Your interest in supporting the Khoisan First Nations mandate is appreciated. Is there anything else you'd like to know about our cause?";
     }
     
-    return "While I don't have specific information about that, I'd be happy to tell you about the Khoisan mandate's key pillars: land sovereignty, cultural recognition, political representation, and financial reparation. Which interests you most? You can also learn more at https://khoisanvoice.carrd.co/";
+    return "While I don't have specific information about that particular question, I'd be happy to tell you about the Khoisan mandate's key pillars: land sovereignty, cultural recognition, political representation, and financial reparation. Which interests you most? You can also learn more at https://khoisanvoice.carrd.co/";
   }
 
   public static getFallbackResponse(query: string, docs: DocumentWithSource[]): string {
     const queryLower = query.toLowerCase();
+    
+    // Special handling for mandate-related questions
+    if (queryLower.includes("mandate") || queryLower.includes("vote")) {
+      return "The Khoisan mandate is a comprehensive framework with four pillars: (1) Land Sovereignty - returning ancestral territories with full land ownership, mineral and maritime rights, (2) Cultural Recognition - preserving endangered languages and ending colonial classifications, (3) Political Representation - ensuring direct parliamentary representation and veto power on legislation affecting Khoisan territories, and (4) Financial Reparation - establishing mechanisms for economic justice. Which aspect would you like to learn more about?";
+    }
     
     if (queryLower.includes("land") || queryLower.includes("sovereignty")) {
       return "Supporting the Khoisan mandate on land sovereignty is crucial as it seeks to restore ancestral territories that were unjustly taken during colonization. This includes complete land ownership, mineral rights, and maritime resource access. Land sovereignty is fundamental to the Khoisan people's cultural survival and economic independence. Join us in advocating for this historical justice! (Source: Khoisan Mandate)";

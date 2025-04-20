@@ -1,13 +1,15 @@
+
 import { pipeline, env } from "@huggingface/transformers";
 import { toast } from "sonner";
 import { DocumentWithSource } from "./types/ragTypes";
+import { huggingFaceConfig } from "./apiConfig";
 
 // Configure transformers.js to use CDN
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-// Set a small embedding model that works well for the Khoisan content
-const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+// Use the model from config with a fallback
+const EMBEDDING_MODEL = huggingFaceConfig.model || "Xenova/all-MiniLM-L6-v2";
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 2000;
 
@@ -22,9 +24,11 @@ class VectorDatabase {
   private embeddingPipeline: any = null;
   private isInitializing: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private initialized: boolean = false;
 
   constructor() {
-    this.initEmbeddingModel();
+    // Delay initialization to ensure HuggingFace config is loaded
+    setTimeout(() => this.initEmbeddingModel(), 1000);
   }
 
   private async initEmbeddingModel(attempt: number = 1): Promise<void> {
@@ -37,6 +41,7 @@ class VectorDatabase {
     this.initializationPromise = new Promise<void>(async (resolve, reject) => {
       try {
         console.log(`Initializing embedding model (attempt ${attempt}/${MAX_RETRY_ATTEMPTS})...`);
+        console.log(`Using API key: ${huggingFaceConfig.apiKey.substring(0, 5)}...`);
         toast.info("Loading Khoisan knowledge base...");
 
         // Use the feature-extraction pipeline with the compact model
@@ -58,6 +63,7 @@ class VectorDatabase {
         console.log("Embedding model initialized successfully");
         toast.success("Khoisan knowledge base ready");
         this.isInitializing = false;
+        this.initialized = true;
         resolve();
       } catch (error) {
         console.error("Error initializing embedding model:", error);
@@ -89,6 +95,9 @@ class VectorDatabase {
       } catch (error) {
         console.error("Failed to initialize embedding model for adding documents:", error);
         toast.error("Unable to add documents to knowledge base");
+        
+        // Store documents without embeddings for now
+        this.documents = [...this.documents, ...docs];
         return;
       }
     }
@@ -126,9 +135,11 @@ class VectorDatabase {
               embedding
             });
             
-            console.log(`Added document: ${doc.id}`);
+            console.log(`Added document: ${doc.id} (${doc.text.substring(0, 30)}...)`);
           } catch (error) {
             console.error(`Failed to create embedding for document ${doc.id}:`, error);
+            // Add document without embedding as fallback
+            this.documents.push(doc);
           }
         }));
 
@@ -138,7 +149,9 @@ class VectorDatabase {
       console.log(`Added ${this.documents.length} documents to vector database`);
     } catch (error) {
       console.error("Error adding documents:", error);
-      toast.error("Failed to index Khoisan knowledge base");
+      // Add documents without embeddings as fallback
+      this.documents = [...this.documents, ...docs];
+      toast.error("Failed to index all Khoisan knowledge base documents");
     }
   }
 
@@ -161,12 +174,32 @@ class VectorDatabase {
       return [];
     }
 
+    // Special case for mandate-related queries - return predefined documents
+    if (query.toLowerCase().includes("mandate")) {
+      console.log("Mandate query detected, returning predefined documents");
+      const mandateDocs = this.documents.filter(doc => 
+        doc.text.toLowerCase().includes("mandate") || 
+        doc.source === "Khoisan Mandate"
+      );
+      
+      // Return mandate docs if found, otherwise continue with similarity search
+      if (mandateDocs.length > 0) {
+        return mandateDocs.slice(0, k).map(({id, text, source, date}) => ({
+          id, text, source, date
+        }));
+      }
+    }
+
     if (!this.embeddingPipeline) {
       try {
         await this.initEmbeddingModel();
       } catch (error) {
         console.error("Failed to initialize embedding model for similarity search:", error);
-        return [];
+        
+        // Return the first k documents as fallback
+        return this.documents.slice(0, k).map(({id, text, source, date}) => ({
+          id, text, source, date
+        }));
       }
     }
 
@@ -179,7 +212,7 @@ class VectorDatabase {
       
       const queryEmbedding = Array.from(result.data) as number[];
 
-      // Calculate cosine similarity for each document
+      // Calculate cosine similarity for each document that has embeddings
       const similarities = this.documents.map((doc, index) => {
         if (!doc.embedding) {
           return { index, similarity: 0 };
@@ -193,14 +226,18 @@ class VectorDatabase {
       similarities.sort((a, b) => b.similarity - a.similarity);
       const topK = similarities.slice(0, k);
 
-      // Return documents with id and date
+      // Return documents
       return topK.map(({ index }) => {
         const { id, text, source, date } = this.documents[index];
         return { id, text, source, date };
       });
     } catch (error) {
       console.error("Error during similarity search:", error);
-      return [];
+      // Return a random selection of documents as fallback
+      const randomDocs = [...this.documents].sort(() => 0.5 - Math.random()).slice(0, k);
+      return randomDocs.map(({id, text, source, date}) => ({
+        id, text, source, date
+      }));
     }
   }
 

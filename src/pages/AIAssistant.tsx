@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, ArrowLeft, Cog, MessageSquare, AlertCircle } from "lucide-react";
+import { Bot, ArrowLeft, Cog, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
@@ -25,16 +24,13 @@ const AIAssistant = () => {
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Load saved configurations and initialize the assistant
   useEffect(() => {
-    // Load saved configurations
     loadConfigurationsFromStorage();
     
     let isMounted = true;
     
     const initializeAI = async () => {
       try {
-        // Try to initialize the AI model
         const textGenerator = await loadAIModel();
         if (isMounted) {
           setModel(textGenerator);
@@ -54,10 +50,10 @@ const AIAssistant = () => {
 
     initializeAI();
     
-    // Initialize content database for RAG
     const initializeContent = async () => {
       try {
         await updateContentDatabase();
+        console.log("Content database initialized successfully");
       } catch (error) {
         console.error("Error initializing content database:", error);
         toast.error("Failed to initialize content database. Some responses may be limited.");
@@ -66,7 +62,6 @@ const AIAssistant = () => {
     
     initializeContent();
     
-    // Schedule regular content updates
     scheduleContentUpdates();
     
     return () => {
@@ -74,52 +69,33 @@ const AIAssistant = () => {
     };
   }, []);
 
+  const handleRefreshContent = async () => {
+    toast.info("Refreshing knowledge base...");
+    try {
+      await updateContentDatabase();
+      toast.success("Knowledge base refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing content database:", error);
+      toast.error("Failed to refresh knowledge base");
+    }
+  };
+
   const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
     
-    // Add user message
     const userMessage: Message = { role: "user", content: inputText };
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setIsTyping(true);
     
     try {
-      // First try with local model if available
-      if (model && !modelLoadError) {
-        console.log("Generating response using local model for:", inputText);
-        
-        try {
-          const result = await model(userMessage.content, {
-            max_new_tokens: 250,
-            temperature: 0.7
-          });
-          
-          let response = result[0].generated_text.replace(userMessage.content, "").trim();
-          
-          // Check if response is valid
-          if (response && response.length >= 10) {
-            // Add assistant response after a small delay to simulate thinking
-            setTimeout(() => {
-              setMessages(prevMessages => [
-                ...prevMessages, 
-                { role: "assistant", content: response }
-              ]);
-              setIsTyping(false);
-            }, 1000);
-            return;
-          } else {
-            console.log("Local model returned insufficient response, using OpenRouter API");
-          }
-        } catch (error) {
-          console.error("Error in local model response generation:", error);
-        }
-      }
+      console.log("Processing user message:", inputText);
       
-      // Fallback to OpenRouter API using RAG
-      console.log("Using OpenRouter API with RAG for:", inputText);
+      console.log("Using RAG service for:", inputText);
+      
       try {
         const response = await ragService.generateResponse(inputText);
+        console.log("RAG response received:", response);
         
-        // Add assistant response after a small delay to simulate thinking
         setTimeout(() => {
           setMessages(prevMessages => [
             ...prevMessages, 
@@ -128,7 +104,7 @@ const AIAssistant = () => {
           setIsTyping(false);
         }, 1000);
       } catch (error) {
-        console.error("Error in OpenRouter API response generation:", error);
+        console.error("Error in RAG service response generation:", error);
         handleResponseError();
       }
     } catch (error) {
@@ -199,6 +175,18 @@ const AIAssistant = () => {
                       </div>
                     )}
                     
+                    <div className="flex justify-end mb-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleRefreshContent}
+                        className="flex items-center gap-1"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Refresh Knowledge Base
+                      </Button>
+                    </div>
+                    
                     <MessageList messages={messages} isTyping={isTyping} />
                     <ChatInput 
                       onSendMessage={handleSendMessage}
@@ -221,7 +209,6 @@ const AIAssistant = () => {
             </CardHeader>
             
             <CardContent>
-              {/* Knowledge Base Demo */}
               <KnowledgeBaseDemo />
             </CardContent>
           </Card>
