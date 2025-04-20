@@ -1,463 +1,626 @@
 /**
- * Khoisan Voice Chatbot for Cisco Meraki External Captive Portal
- * A conversational assistant that provides information about the Khoisan mandate
- * while also helping users with portal authentication.
+ * Khoisan Voice Conversational Chatbot for Meraki Portal
+ * 
+ * A natural-sounding chatbot that provides information about the Khoisan mandate
+ * with a focus on land sovereignty, cultural recognition, political representation,
+ * and financial reparation. Uses session storage to maintain conversation context.
  */
 
-(function() {
-    // Configuration
-    const CHATBOT_NAME = "Khoisan Voice";
-    const CHAT_STORAGE_KEY = "khoisanChatHistory";
-    const MAX_HISTORY = 10;
+// Configuration for the chatbot
+const CHATBOT_CONFIG = {
+  // UI settings
+  uiConfig: {
+    position: 'bottom-right',
+    primaryColor: '#60270E',
+    secondaryColor: '#7A3413',
+    fontFamily: 'Arial, sans-serif',
+    botName: 'Khoisan Voice Assistant',
+    welcomeMessage: "Hello! I'm here to help you learn about the Khoisan First Nations mandate. Ask me about land sovereignty, cultural recognition, political representation, or financial reparation. How can I assist you today?"
+  },
+  
+  // Conversation memory
+  memoryKey: 'khoisan_chat_history',
+  maxMemoryItems: 5,
+  
+  // Knowledge base for key Khoisan mandate topics
+  knowledgeBase: {
+    'land_sovereignty': {
+      keywords: ['land', 'territory', 'ancestral', 'sovereign', 'ownership'],
+      response: "The Khoisan mandate calls for the unconditional return of ancestral territories. This includes complete land ownership, mineral rights, and access to maritime resources that were historically theirs. Archaeological evidence suggests the Khoisan have lived in Southern Africa for up to 140,000 years, making their land claims historically significant. Would you like to know more about the territories involved or how this sovereignty would work in practice?"
+    },
+    'cultural_recognition': {
+      keywords: ['culture', 'language', 'identity', 'recognition', 'coloured', 'heritage'],
+      response: "Cultural recognition in the Khoisan mandate focuses on preserving their identity and heritage. This includes stopping the use of colonial terms like 'coloured,' officially recognizing Khoisan languages as national languages, and implementing preservation programs. Some Khoisan languages have fewer than 100 fluent speakers left, making these efforts particularly urgent. What aspect of cultural preservation interests you most?"
+    },
+    'political_representation': {
+      keywords: ['representation', 'parliament', 'political', 'voting', 'governance', 'veto'],
+      response: "Political representation for the Khoisan involves direct parliamentary representation and veto power on legislation affecting their territories and rights. The mandate emphasizes that no laws should be enacted without explicit Khoisan community consent - a principle of Free, Prior and Informed Consent. How do you feel this would change current governance structures?"
+    },
+    'financial_reparation': {
+      keywords: ['reparation', 'financial', 'compensation', 'fund', 'economic', 'payment'],
+      response: "Financial reparations for the Khoisan mandate focus on addressing historical injustices through economic compensation. This includes establishing community development funds, providing resource rights, and creating transparent mechanisms to compensate for centuries of economic marginalization and land dispossession. These funds would support education, healthcare, and cultural preservation. Are you interested in how these reparations might be implemented?"
+    },
+    'wifi_connection': {
+      keywords: ['wifi', 'connect', 'internet', 'connection', 'login', 'email', 'sign'],
+      response: "To connect to the Khoisan Voice Wi-Fi network, simply enter your email address and name in the form above, then click 'Connect to Wi-Fi'. This is a free service while you're learning about the Khoisan mandate. Is there anything specific about the Khoisan First Nations you'd like to know while you're connected?"
+    }
+  },
+  
+  // Clarification responses when no specific topic is detected
+  clarificationResponses: [
+    "I'd be happy to tell you about the Khoisan mandate. Could you specify which aspect interests you most - land sovereignty, cultural recognition, political representation, or financial reparation?",
+    "The Khoisan mandate covers several important areas. To give you the most helpful information, could you tell me which aspect you're curious about?",
+    "I'm here to share information about the Khoisan First Nations mandate. Would you like to know about land rights, cultural identity, political representation, or financial reparations?"
+  ],
+  
+  // Follow-up questions to encourage conversation
+  followUpQuestions: [
+    "Is there something specific about that you'd like to know more about?",
+    "Does that answer your question? I'm happy to elaborate further.",
+    "What other aspects of the Khoisan mandate interest you?",
+    "How does this information relate to your understanding of indigenous rights?",
+    "Would you like to learn about another aspect of the Khoisan mandate?"
+  ]
+};
+
+// Chat state management
+let chatWindow;
+let chatInput;
+let chatMessages;
+let isChatOpen = false;
+let conversationContext = {
+  history: [],
+  currentTopic: null
+};
+
+// Load chat history from session storage
+function loadChatHistory() {
+  const savedHistory = sessionStorage.getItem(CHATBOT_CONFIG.memoryKey);
+  if (savedHistory) {
+    try {
+      conversationContext.history = JSON.parse(savedHistory);
+      
+      // Restore the current topic if available
+      const lastUserMessage = conversationContext.history
+        .filter(msg => msg.sender === 'user')
+        .pop();
+        
+      if (lastUserMessage) {
+        conversationContext.currentTopic = detectTopic(lastUserMessage.text);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      conversationContext.history = [];
+    }
+  }
+}
+
+// Save chat history to session storage
+function saveChatHistory() {
+  try {
+    // Only keep the last N messages to prevent storage issues
+    const historyToSave = conversationContext.history
+      .slice(-CHATBOT_CONFIG.maxMemoryItems * 2);
+      
+    sessionStorage.setItem(
+      CHATBOT_CONFIG.memoryKey, 
+      JSON.stringify(historyToSave)
+    );
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+  }
+}
+
+// Detect the topic based on keywords in user input
+function detectTopic(userInput) {
+  const inputLower = userInput.toLowerCase();
+  
+  for (const [topic, data] of Object.entries(CHATBOT_CONFIG.knowledgeBase)) {
+    for (const keyword of data.keywords) {
+      if (inputLower.includes(keyword)) {
+        return topic;
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Get a personalized response based on conversation context
+function getResponse(userInput) {
+  // Detect the topic from user input
+  const detectedTopic = detectTopic(userInput);
+  
+  // Update conversation context
+  if (detectedTopic) {
+    conversationContext.currentTopic = detectedTopic;
+  }
+  
+  // If we detected a topic, return the knowledge base response
+  if (detectedTopic && CHATBOT_CONFIG.knowledgeBase[detectedTopic]) {
+    return CHATBOT_CONFIG.knowledgeBase[detectedTopic].response;
+  }
+  
+  // Multi-turn conversation handling
+  if (conversationContext.currentTopic && conversationContext.history.length > 1) {
+    // If we're in a conversation about a specific topic, but the new message
+    // doesn't clearly match a topic, continue with the current topic
+    const currentTopicData = CHATBOT_CONFIG.knowledgeBase[conversationContext.currentTopic];
     
-    // Predefined responses for common queries
-    const knowledgeBase = {
-        // Land sovereignty responses
-        land: [
-            "The Khoisan mandate calls for full recognition as the original First Nations of Southern Africa and unconditional return of ancestral territories. This includes complete land ownership, mineral rights, and access to maritime resources. Archaeological evidence suggests the Khoisan have lived in Southern Africa for up to 140,000 years. Would you like to know more about the historical context?",
-            "Land sovereignty is central to the Khoisan identity. The mandate emphasizes returning ancestral territories that were taken during colonization, along with all associated rights to resources. This seeks to restore indigenous stewardship over lands that sustained Khoisan communities for thousands of generations. Does that address your question?",
-            "For the Khoisan people, land sovereignty isn't just about ownership—it's about reconnecting with ancestral territories that hold deep cultural and spiritual significance. The mandate seeks to restore these connections that were severed through colonization and displacement. Is there a specific aspect of land rights you're curious about?"
-        ],
-        
-        // Cultural recognition responses
-        culture: [
-            "Cultural recognition in the Khoisan mandate includes stopping the use of colonial terms like 'coloured,' officially recognizing Khoisan languages as national languages, and funding language preservation programs. Some Khoisan languages have fewer than 100 fluent speakers left, making preservation urgent. What aspects of cultural identity interest you most?",
-            "The Khoisan languages are among the oldest in the world, featuring unique click consonants found in few other languages. The mandate seeks to preserve this linguistic heritage through official recognition and comprehensive language revitalization programs. Would you like to learn about other cultural preservation efforts?",
-            "Khoisan cultural recognition extends beyond language to include traditional knowledge systems, spiritual practices, and community governance structures that have been marginalized by colonial systems. The mandate seeks to restore dignity and respect to these cultural elements. Is there a particular aspect of Khoisan culture you'd like to explore?"
-        ],
-        
-        // Political representation responses
-        representation: [
-            "Political representation for the Khoisan involves direct parliamentary representation and veto power on legislation affecting their territories and rights. The mandate emphasizes that no agreements or laws should be enacted without explicit Khoisan community consent, following the principle of Free, Prior and Informed Consent. How do you feel this would change current governance?",
-            "Despite constitutional recognition in some countries, practical implementation of Khoisan rights remains severely limited. The mandate seeks to address this by ensuring Khoisan communities have meaningful participation in decision-making processes that affect their lands, resources, and way of life. Would you like to know more about how this would work?",
-            "Traditional Khoisan leadership structures must be officially recognized and incorporated into governance frameworks. This would restore indigenous decision-making processes that were disrupted by colonial systems. Does this help clarify the political representation aspects of the mandate?"
-        ],
-        
-        // Financial reparation responses
-        reparation: [
-            "Financial reparations in the Khoisan mandate focus on establishing a dedicated national fund for community development and creating transparent mechanisms to compensate for centuries of economic marginalization. These reparations aim to provide resources for education, healthcare, and cultural preservation. Would you like to know more about how these funds would be allocated?",
-            "The reparations sought aren't just about money—they're about addressing historical injustices that have created ongoing economic disadvantages. This includes compensating for land loss, resource extraction, and systematic exclusion from economic opportunities. Does this help explain the reparation component?",
-            "Financial reparation is viewed as a crucial step toward healing historical wounds and creating economic justice. The mandate calls for both immediate community development funds and long-term mechanisms to address the intergenerational impacts of colonization and apartheid. Is there a specific aspect of the reparations you're interested in?"
-        ],
-        
-        // Portal assistance responses
-        portal: [
-            "Welcome to the Khoisan Voice Wi-Fi portal! To connect, simply enter your email address in the form above, and click the 'Connect' button. While you're here, feel free to ask me about the Khoisan mandate and indigenous rights.",
-            "To get online, just fill out the quick form with your email address. Once you're connected, you'll have access to information about the Khoisan First Nations mandate and other resources. Need help with anything else?",
-            "You can connect to our Wi-Fi by entering your email in the form. While you're connecting, would you like to learn about the Khoisan mandate's key positions on land sovereignty, cultural recognition, political representation, or financial reparation?"
-        ],
-        
-        // Fallback responses
-        fallback: [
-            "That's an interesting question. The Khoisan mandate covers four key areas: land sovereignty, cultural recognition, political representation, and financial reparation. Which of these would you like to learn more about?",
-            "I'm not sure I fully understand your question. Could you tell me more about what you'd like to know? I can share information about the Khoisan mandate on land rights, cultural recognition, political voice, or economic justice.",
-            "I'd like to help with that. To give you the best information, could you clarify if you're asking about land sovereignty, cultural recognition, political representation, or financial reparations? These are the four pillars of the Khoisan mandate."
-        ]
-    };
-    
-    // Chat history management
-    let chatHistory = [];
-    
-    function loadChatHistory() {
-        const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-        if (saved) {
-            try {
-                chatHistory = JSON.parse(saved);
-            } catch (e) {
-                console.error("Failed to load chat history:", e);
-                chatHistory = [];
-            }
-        }
+    if (userInput.toLowerCase().includes('yes') || 
+        userInput.toLowerCase().includes('tell me more') ||
+        userInput.toLowerCase().includes('more information')) {
+      
+      // User wants more information about the current topic
+      if (conversationContext.currentTopic === 'land_sovereignty') {
+        return "The Khoisan land sovereignty claim is based on archaeological and historical evidence of continuous habitation. The mandate calls for formal recognition through constitutional amendments and international law mechanisms. This includes the right to control development, manage natural resources, and preserve cultural sites on these lands. Does this address what you wanted to know about land sovereignty?";
+      } 
+      else if (conversationContext.currentTopic === 'cultural_recognition') {
+        return "Cultural recognition for the Khoisan includes establishing cultural centers in major cities, incorporating Khoisan history into educational curricula, and funding research to document and preserve traditional knowledge. Many Khoisan cultural practices contain valuable ecological wisdom developed over millennia. Would you like to know about specific cultural preservation initiatives?";
+      }
+      else if (conversationContext.currentTopic === 'political_representation') {
+        return "Political representation in the Khoisan mandate would involve creating designated seats in national parliament, establishing consultative councils at provincial and local levels, and including Khoisan representatives in environmental policy decisions. It emphasizes a transition from tokenistic consultation to meaningful participation in governance. How do you think this would affect current political structures?";
+      }
+      else if (conversationContext.currentTopic === 'financial_reparation') {
+        return "Financial reparations would include calculating the economic impact of historical land dispossession, establishing trust funds managed by Khoisan representatives, creating scholarships for Khoisan youth, and investing in Khoisan-owned businesses. Some proposals suggest royalties from resources extracted from ancestral territories. Is there a specific aspect of these financial mechanisms you'd like to explore?";
+      }
+      else if (conversationContext.currentTopic === 'wifi_connection') {
+        return "Once you've connected to the Wi-Fi by submitting the form, you'll have full internet access. While you browse, I encourage you to check out https://khoisanvoice.carrd.co/ for more information about the Khoisan mandate. Is there anything specific about the Wi-Fi connection process you're having trouble with?";
+      }
     }
     
-    function saveChatHistory() {
-        // Keep only the most recent messages
-        if (chatHistory.length > MAX_HISTORY) {
-            chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY);
-        }
-        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
+    // Check if the question is about specifics of the current topic
+    if (userInput.toLowerCase().includes('how') || 
+        userInput.toLowerCase().includes('what') || 
+        userInput.toLowerCase().includes('why') ||
+        userInput.toLowerCase().includes('when') ||
+        userInput.toLowerCase().includes('who')) {
+      
+      if (conversationContext.currentTopic === 'land_sovereignty') {
+        return "The Khoisan land sovereignty mandate proposes implementation through formal territory mapping projects, legal recognition via constitutional courts, and international advocacy at forums like the UN. It emphasizes that sovereignty includes both surface rights and subsurface resource rights, which have often been separated under colonial legal systems. Does that help answer your question about land sovereignty?";
+      }
+      else if (conversationContext.currentTopic === 'cultural_recognition') {
+        return "Cultural recognition would be implemented through national language institutes, community-led documentation projects, and formal processes to correct historical records. The Khoisan have rich traditions of rock art, storytelling, and ecological knowledge that are at risk of being lost without these interventions. Would you like to know more about any of these specific cultural elements?";
+      }
+      else if (conversationContext.currentTopic === 'political_representation') {
+        return "The political representation framework would create a dual governance structure that respects both modern democratic processes and traditional Khoisan decision-making. This includes recognized councils of elders alongside elected representatives. The mandate argues this approach would create more nuanced and just governance. Does that clarify how political representation would work?";
+      }
+      else if (conversationContext.currentTopic === 'financial_reparation') {
+        return "Financial reparations would be implemented through dedicated legislation establishing a national reconciliation fund, direct community investments, and economic development zones in historically Khoisan territories. Some proposals include tax incentives for businesses partnering with Khoisan communities. Implementation would be monitored by an independent commission with Khoisan representation. Does that address what you wanted to know?";
+      }
     }
-    
-    function addMessageToHistory(message, isUser) {
-        chatHistory.push({
-            content: message,
-            isUser: isUser,
-            timestamp: new Date().toISOString()
-        });
-        saveChatHistory();
-    }
-    
-    // Topic detection
-    function detectTopic(message) {
-        const messageLower = message.toLowerCase();
-        
-        // Check for portal/connection related queries
-        if (messageLower.includes("connect") || messageLower.includes("wifi") || 
-            messageLower.includes("login") || messageLower.includes("sign in") ||
-            messageLower.includes("internet") || messageLower.includes("network")) {
-            return "portal";
-        }
-        
-        // Check for land sovereignty queries
-        if (messageLower.includes("land") || messageLower.includes("territory") || 
-            messageLower.includes("ancestral") || messageLower.includes("sovereign")) {
-            return "land";
-        }
-        
-        // Check for cultural recognition queries
-        if (messageLower.includes("culture") || messageLower.includes("language") || 
-            messageLower.includes("identity") || messageLower.includes("coloured") ||
-            messageLower.includes("heritage") || messageLower.includes("tradition")) {
-            return "culture";
-        }
-        
-        // Check for political representation queries
-        if (messageLower.includes("representation") || messageLower.includes("political") || 
-            messageLower.includes("parliament") || messageLower.includes("governance") ||
-            messageLower.includes("voting") || messageLower.includes("rights")) {
-            return "representation";
-        }
-        
-        // Check for financial reparation queries
-        if (messageLower.includes("financial") || messageLower.includes("reparation") || 
-            messageLower.includes("compensation") || messageLower.includes("fund") ||
-            messageLower.includes("economic") || messageLower.includes("money")) {
-            return "reparation";
-        }
-        
-        // If no specific topic is detected
-        return "fallback";
-    }
-    
-    // Generate natural-sounding responses
-    function generateResponse(message) {
-        // First detect the topic of the message
-        const topic = detectTopic(message);
-        
-        // Get relevant responses for the topic
-        const responses = knowledgeBase[topic] || knowledgeBase.fallback;
-        
-        // Choose a response, preferably not the last one used for this topic
-        let lastIndex = -1;
-        if (chatHistory.length > 0) {
-            const lastBotMessage = chatHistory.filter(msg => !msg.isUser).pop();
-            if (lastBotMessage) {
-                for (let i = 0; i < responses.length; i++) {
-                    if (lastBotMessage.content === responses[i]) {
-                        lastIndex = i;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Pick a different response if possible
-        let responseIndex;
-        if (responses.length > 1 && lastIndex !== -1) {
-            do {
-                responseIndex = Math.floor(Math.random() * responses.length);
-            } while (responseIndex === lastIndex && responses.length > 1);
-        } else {
-            responseIndex = Math.floor(Math.random() * responses.length);
-        }
-        
-        return responses[responseIndex];
-    }
-    
-    // Handle specific queries
-    function handleSpecificQuery(message) {
-        const messageLower = message.toLowerCase();
-        
-        // Handle "What forms of financial reparation are being sought?"
-        if (messageLower.includes("what forms of financial reparation") || 
-            (messageLower.includes("financial") && messageLower.includes("reparation") && 
-             (messageLower.includes("what") || messageLower.includes("how")))) {
-            return "Financial reparations for the Khoisan mandate focus on compensating for historical land loss and economic marginalization, potentially through community funds or resource rights. The mandate specifically calls for a dedicated national fund for Khoisan community development and transparent mechanisms to address historical economic damage. These funds would support education, healthcare, and cultural preservation programs. Want to know more about how this is being proposed?";
-        }
-        
-        return null;
-    }
-    
-    // Create and inject chatbot UI
-    function createChatbotUI() {
-        // Create chat container
-        const chatContainer = document.createElement('div');
-        chatContainer.id = 'khoisan-chatbot';
-        chatContainer.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            max-width: 90vw;
-            height: 450px;
-            max-height: 70vh;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1000;
-            font-family: Arial, sans-serif;
-            transition: all 0.3s ease;
-            transform: translateY(380px);
-        `;
-        
-        // Create chat header
-        const chatHeader = document.createElement('div');
-        chatHeader.style.cssText = `
-            background: #60270E;
-            color: white;
-            padding: 15px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-        `;
-        chatHeader.innerHTML = `
-            <span>${CHATBOT_NAME} Assistant</span>
-            <span id="chat-toggle">▲</span>
-        `;
-        
-        // Create chat messages area
-        const chatMessages = document.createElement('div');
-        chatMessages.id = 'chat-messages';
-        chatMessages.style.cssText = `
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        `;
-        
-        // Create chat input area
-        const chatInputArea = document.createElement('div');
-        chatInputArea.style.cssText = `
-            padding: 10px;
-            border-top: 1px solid #eee;
-            display: flex;
-        `;
-        
-        // Create chat input
-        const chatInput = document.createElement('input');
-        chatInput.type = 'text';
-        chatInput.id = 'chat-input';
-        chatInput.placeholder = 'Ask about the Khoisan mandate...';
-        chatInput.style.cssText = `
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            outline: none;
-        `;
-        
-        // Create send button
-        const sendButton = document.createElement('button');
-        sendButton.id = 'chat-send';
-        sendButton.innerHTML = '→';
-        sendButton.style.cssText = `
-            background: #60270E;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            margin-left: 10px;
-            cursor: pointer;
-            font-size: 18px;
-        `;
-        
-        // Assemble the chat UI
-        chatInputArea.appendChild(chatInput);
-        chatInputArea.appendChild(sendButton);
-        
-        chatContainer.appendChild(chatHeader);
-        chatContainer.appendChild(chatMessages);
-        chatContainer.appendChild(chatInputArea);
-        
-        // Add to page
-        document.body.appendChild(chatContainer);
-        
-        // Add welcome message
-        addBotMessage("Hello! I'm here to help with both Wi-Fi connection and information about the Khoisan mandate. What would you like to know?");
-        
-        // Toggle chat open/closed
-        let isChatOpen = false;
-        chatHeader.addEventListener('click', function() {
-            isChatOpen = !isChatOpen;
-            chatContainer.style.transform = isChatOpen ? 'translateY(0)' : 'translateY(380px)';
-            document.getElementById('chat-toggle').textContent = isChatOpen ? '▼' : '▲';
-        });
-        
-        // Send message on button click
-        sendButton.addEventListener('click', sendMessage);
-        
-        // Send message on Enter key
-        chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-        
-        // Load previous chat history
-        loadChatHistory();
-        displayChatHistory();
-    }
-    
-    // Display chat history
-    function displayChatHistory() {
-        const chatMessages = document.getElementById('chat-messages');
-        chatMessages.innerHTML = '';
-        
-        chatHistory.forEach(message => {
-            if (message.isUser) {
-                addUserMessageToUI(message.content);
-            } else {
-                addBotMessageToUI(message.content);
-            }
-        });
-        
-        // Scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    // Add user message to UI
-    function addUserMessageToUI(message) {
-        const chatMessages = document.getElementById('chat-messages');
-        const messageElement = document.createElement('div');
-        messageElement.className = 'user-message';
-        messageElement.style.cssText = `
-            align-self: flex-end;
-            background: #E6F2FF;
-            padding: 10px 15px;
-            border-radius: 20px 20px 0 20px;
-            max-width: 80%;
-            word-wrap: break-word;
-        `;
-        messageElement.textContent = message;
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    // Add bot message to UI
-    function addBotMessageToUI(message) {
-        const chatMessages = document.getElementById('chat-messages');
-        const messageElement = document.createElement('div');
-        messageElement.className = 'bot-message';
-        messageElement.style.cssText = `
-            align-self: flex-start;
-            background: #F0F0F0;
-            padding: 10px 15px;
-            border-radius: 20px 20px 20px 0;
-            max-width: 80%;
-            word-wrap: break-word;
-        `;
-        messageElement.textContent = message;
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    // Add user message
-    function addUserMessage(message) {
-        addUserMessageToUI(message);
-        addMessageToHistory(message, true);
-    }
-    
-    // Add bot message
-    function addBotMessage(message) {
-        addBotMessageToUI(message);
-        addMessageToHistory(message, false);
-    }
-    
-    // Send message function
-    function sendMessage() {
-        const chatInput = document.getElementById('chat-input');
-        const message = chatInput.value.trim();
-        
-        if (message) {
-            // Add user message to chat
-            addUserMessage(message);
-            
-            // Clear input
-            chatInput.value = '';
-            
-            // Add typing indicator
-            showTypingIndicator();
-            
-            // Process message and respond with slight delay for natural feel
-            setTimeout(() => {
-                // Hide typing indicator
-                hideTypingIndicator();
-                
-                // Check for specific queries first
-                const specificResponse = handleSpecificQuery(message);
-                if (specificResponse) {
-                    addBotMessage(specificResponse);
-                } else {
-                    // Generate general response
-                    const response = generateResponse(message);
-                    addBotMessage(response);
-                }
-            }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
-        }
-    }
-    
-    // Show typing indicator
-    function showTypingIndicator() {
-        const chatMessages = document.getElementById('chat-messages');
-        const typingIndicator = document.createElement('div');
-        typingIndicator.id = 'typing-indicator';
-        typingIndicator.style.cssText = `
-            align-self: flex-start;
-            background: #F0F0F0;
-            padding: 10px 15px;
-            border-radius: 20px 20px 20px 0;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        `;
-        typingIndicator.innerHTML = `
-            <span style="width: 8px; height: 8px; background: #777; border-radius: 50%; margin-right: 4px; animation: pulse 1s infinite"></span>
-            <span style="width: 8px; height: 8px; background: #777; border-radius: 50%; margin-right: 4px; animation: pulse 1s infinite .2s"></span>
-            <span style="width: 8px; height: 8px; background: #777; border-radius: 50%; animation: pulse 1s infinite .4s"></span>
-        `;
-        
-        // Add animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { opacity: .4; }
-                50% { opacity: 1; }
-                100% { opacity: .4; }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        chatMessages.appendChild(typingIndicator);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+  }
+  
+  // If we can't determine a good context-aware response, use a clarification
+  return getRandomElement(CHATBOT_CONFIG.clarificationResponses);
+}
+
+// Add a message to the chat window
+function addMessage(text, sender) {
+  if (!chatMessages) return;
+  
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('chat-message');
+  messageElement.classList.add(`${sender}-message`);
+  
+  const messageContent = document.createElement('div');
+  messageContent.classList.add('message-content');
+  messageContent.textContent = text;
+  
+  messageElement.appendChild(messageContent);
+  chatMessages.appendChild(messageElement);
+  
+  // Auto-scroll to the bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  // Add to conversation history
+  conversationContext.history.push({
+    sender: sender,
+    text: text,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Save the updated history
+  saveChatHistory();
+}
+
+// Send a message to the chatbot and get a response
+function sendMessage() {
+  if (!chatInput || !chatInput.value.trim()) return;
+  
+  const userMessage = chatInput.value.trim();
+  addMessage(userMessage, 'user');
+  
+  // Clear the input
+  chatInput.value = '';
+  
+  // Show typing indicator
+  showTypingIndicator();
+  
+  // Simulate a short delay for a more natural conversation feel
+  setTimeout(() => {
+    // Get an appropriate response
+    const botResponse = getResponse(userMessage);
     
     // Hide typing indicator
-    function hideTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
+    hideTypingIndicator();
+    
+    // Add bot response
+    addMessage(botResponse, 'bot');
+    
+    // If we're using server-side API, we'd make a fetch call here instead
+    // const response = await fetch('/api/chat', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ message: userMessage })
+    // });
+    // const data = await response.json();
+    // addMessage(data.response, 'bot');
+    
+  }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+}
+
+// Show the typing indicator
+function showTypingIndicator() {
+  if (!chatMessages) return;
+  
+  const typingIndicator = document.createElement('div');
+  typingIndicator.id = 'typing-indicator';
+  typingIndicator.classList.add('chat-message', 'bot-message', 'typing-indicator');
+  
+  const indicatorContent = document.createElement('div');
+  indicatorContent.classList.add('message-content');
+  
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('span');
+    dot.classList.add('typing-dot');
+    indicatorContent.appendChild(dot);
+  }
+  
+  typingIndicator.appendChild(indicatorContent);
+  chatMessages.appendChild(typingIndicator);
+  
+  // Auto-scroll to the bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Hide the typing indicator
+function hideTypingIndicator() {
+  if (!chatMessages) return;
+  
+  const typingIndicator = document.getElementById('typing-indicator');
+  if (typingIndicator) {
+    typingIndicator.remove();
+  }
+}
+
+// Toggle the chat window open/closed
+function toggleChat() {
+  if (!chatWindow) return;
+  
+  if (isChatOpen) {
+    chatWindow.classList.remove('open');
+  } else {
+    chatWindow.classList.add('open');
+    
+    // If this is the first time opening, add the welcome message
+    if (conversationContext.history.length === 0) {
+      addMessage(CHATBOT_CONFIG.uiConfig.welcomeMessage, 'bot');
     }
     
-    // Initialize the chatbot when the DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        // Create and inject the chatbot UI
-        createChatbotUI();
-        
-        console.log("Khoisan Voice Chatbot initialized");
+    // Focus the input
+    if (chatInput) {
+      chatInput.focus();
+    }
+  }
+  
+  isChatOpen = !isChatOpen;
+}
+
+// Get a random element from an array
+function getRandomElement(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+// Initialize the chatbot
+function initializeChatbot() {
+  // Create the chatbot UI
+  createChatbotUI();
+  
+  // Load any existing chat history
+  loadChatHistory();
+  
+  // Setup event listeners
+  setupEventListeners();
+  
+  console.log('Khoisan Voice chatbot initialized');
+}
+
+// Create the chatbot UI
+function createChatbotUI() {
+  // Add the chatbot styles
+  const style = document.createElement('style');
+  style.textContent = `
+    #chatbot-container {
+      position: fixed;
+      ${CHATBOT_CONFIG.uiConfig.position === 'bottom-right' ? 'bottom: 20px; right: 20px;' : 'bottom: 20px; left: 20px;'}
+      z-index: 1000;
+      font-family: ${CHATBOT_CONFIG.uiConfig.fontFamily};
+    }
+    
+    #chat-toggle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: ${CHATBOT_CONFIG.uiConfig.primaryColor};
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+    
+    #chat-toggle:hover {
+      background-color: ${CHATBOT_CONFIG.uiConfig.secondaryColor};
+      transform: scale(1.05);
+    }
+    
+    #chat-icon {
+      width: 30px;
+      height: 30px;
+    }
+    
+    #chat-window {
+      position: absolute;
+      bottom: 70px;
+      ${CHATBOT_CONFIG.uiConfig.position === 'bottom-right' ? 'right: 0;' : 'left: 0;'}
+      width: 320px;
+      height: 400px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+    }
+    
+    #chat-window.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    
+    #chat-header {
+      background-color: ${CHATBOT_CONFIG.uiConfig.primaryColor};
+      color: white;
+      padding: 15px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #chat-close {
+      cursor: pointer;
+      font-size: 20px;
+    }
+    
+    #chat-messages {
+      flex-grow: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+    
+    .chat-message {
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+    
+    .user-message {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+    
+    .bot-message {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+    
+    .message-content {
+      padding: 10px 15px;
+      border-radius: 18px;
+      background-color: #f1f1f1;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .user-message .message-content {
+      background-color: ${CHATBOT_CONFIG.uiConfig.primaryColor};
+      color: white;
+    }
+    
+    #chat-input-container {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #e6e6e6;
+    }
+    
+    #chat-input {
+      flex-grow: 1;
+      border: 1px solid #e6e6e6;
+      border-radius: 20px;
+      padding: 8px 15px;
+      outline: none;
+      font-family: inherit;
+    }
+    
+    #chat-send {
+      background-color: ${CHATBOT_CONFIG.uiConfig.primaryColor};
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      margin-left: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.3s ease;
+    }
+    
+    #chat-send:hover {
+      background-color: ${CHATBOT_CONFIG.uiConfig.secondaryColor};
+    }
+    
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+    }
+    
+    .typing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 4px;
+      background-color: #808080;
+      border-radius: 50%;
+      animation: typing-dot 1.4s infinite ease-in-out both;
+    }
+    
+    .typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+      margin-right: 0;
+    }
+    
+    @keyframes typing-dot {
+      0%, 80%, 100% { transform: scale(0.7); }
+      40% { transform: scale(1); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Create the chat toggle button and window
+  const chatbotContainer = document.createElement('div');
+  chatbotContainer.id = 'chatbot-container';
+  
+  // Chat toggle button with SVG icon
+  const chatToggle = document.createElement('div');
+  chatToggle.id = 'chat-toggle';
+  chatToggle.innerHTML = `
+    <svg id="chat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+  `;
+  
+  // Chat window
+  const chatWindowElement = document.createElement('div');
+  chatWindowElement.id = 'chat-window';
+  
+  // Chat header
+  const chatHeader = document.createElement('div');
+  chatHeader.id = 'chat-header';
+  chatHeader.innerHTML = `
+    <div>${CHATBOT_CONFIG.uiConfig.botName}</div>
+    <div id="chat-close">×</div>
+  `;
+  
+  // Chat messages container
+  const chatMessagesElement = document.createElement('div');
+  chatMessagesElement.id = 'chat-messages';
+  
+  // Chat input container
+  const chatInputContainer = document.createElement('div');
+  chatInputContainer.id = 'chat-input-container';
+  
+  // Chat input field
+  const chatInputElement = document.createElement('input');
+  chatInputElement.id = 'chat-input';
+  chatInputElement.type = 'text';
+  chatInputElement.placeholder = 'Type your message...';
+  
+  // Chat send button
+  const chatSendButton = document.createElement('button');
+  chatSendButton.id = 'chat-send';
+  chatSendButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+    </svg>
+  `;
+  
+  // Assemble the chat input container
+  chatInputContainer.appendChild(chatInputElement);
+  chatInputContainer.appendChild(chatSendButton);
+  
+  // Assemble the chat window
+  chatWindowElement.appendChild(chatHeader);
+  chatWindowElement.appendChild(chatMessagesElement);
+  chatWindowElement.appendChild(chatInputContainer);
+  
+  // Assemble the chatbot container
+  chatbotContainer.appendChild(chatToggle);
+  chatbotContainer.appendChild(chatWindowElement);
+  
+  // Add the chatbot to the page
+  document.body.appendChild(chatbotContainer);
+  
+  // Store references to the elements
+  chatWindow = chatWindowElement;
+  chatInput = chatInputElement;
+  chatMessages = chatMessagesElement;
+}
+
+// Setup event listeners for the chatbot
+function setupEventListeners() {
+  // Chat toggle button
+  const chatToggle = document.getElementById('chat-toggle');
+  if (chatToggle) {
+    chatToggle.addEventListener('click', toggleChat);
+  }
+  
+  // Chat close button
+  const chatClose = document.getElementById('chat-close');
+  if (chatClose) {
+    chatClose.addEventListener('click', toggleChat);
+  }
+  
+  // Chat send button
+  const chatSend = document.getElementById('chat-send');
+  if (chatSend) {
+    chatSend.addEventListener('click', sendMessage);
+  }
+  
+  // Chat input field (send on Enter)
+  if (chatInput) {
+    chatInput.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
     });
-    
-    // If the DOM is already loaded, initialize immediately
-    if (document.readyState === 'interactive' || document.readyState === 'complete') {
-        createChatbotUI();
-        console.log("Khoisan Voice Chatbot initialized (DOM already loaded)");
-    }
-})();
+  }
+}
+
+// Initialize the chatbot when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializeChatbot);
+
+// Export functions for potential external use
+window.KhoisanChatbot = {
+  toggleChat,
+  sendMessage
+};

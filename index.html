@@ -76,6 +76,36 @@
         margin-bottom: 15px;
         color: #60270E;
       }
+      .highlight-box {
+        border-left: 4px solid #60270E;
+        padding-left: 15px;
+        margin: 20px 0;
+        background-color: #faf8f6;
+        padding: 15px;
+        border-radius: 0 4px 4px 0;
+      }
+      .mandate-pillars {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .pillar-card {
+        background-color: #faf8f6;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      }
+      .pillar-card h3 {
+        color: #60270E;
+        margin-top: 0;
+      }
+      
+      @media (max-width: 600px) {
+        .mandate-pillars {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
 
@@ -104,13 +134,36 @@
       <div class="info-section">
         <h2 class="info-title">About the Khoisan First Nations</h2>
         <p>The Khoisan are the indigenous people of Southern Africa with a history dating back approximately 140,000 years. Their cultural heritage, languages, and traditional knowledge represent some of humanity's oldest living traditions.</p>
-        <p>The Khoisan Voice initiative advocates for:</p>
-        <ul>
-          <li><strong>Land Sovereignty</strong> - Recognition of ancestral territories and resource rights</li>
-          <li><strong>Cultural Recognition</strong> - Preservation of languages and cultural heritage</li>
-          <li><strong>Political Representation</strong> - Direct representation in governance</li>
-          <li><strong>Financial Reparation</strong> - Addressing historical injustices</li>
-        </ul>
+        
+        <div class="highlight-box">
+          <p><strong>Did you know?</strong> Some Khoisan languages have fewer than 100 fluent speakers remaining. The mandate calls for urgent preservation efforts to protect this linguistic heritage.</p>
+        </div>
+        
+        <h3>The Khoisan Voice Mandate</h3>
+        <p>The Khoisan Voice initiative advocates for indigenous rights through four key pillars:</p>
+        
+        <div class="mandate-pillars">
+          <div class="pillar-card">
+            <h3>Land Sovereignty</h3>
+            <p>Recognition of ancestral territories and complete resource rights based on historical occupation dating back 140,000 years.</p>
+          </div>
+          
+          <div class="pillar-card">
+            <h3>Cultural Recognition</h3>
+            <p>Preservation of languages and cultural heritage, including stopping the use of colonial terms like 'coloured'.</p>
+          </div>
+          
+          <div class="pillar-card">
+            <h3>Political Representation</h3>
+            <p>Direct representation in governance and veto power on legislation affecting Khoisan territories and rights.</p>
+          </div>
+          
+          <div class="pillar-card">
+            <h3>Financial Reparation</h3>
+            <p>Addressing historical injustices through community development funds and economic compensation mechanisms.</p>
+          </div>
+        </div>
+        
         <p>Use our chat assistant to learn more about the Khoisan mandate and how you can support indigenous rights.</p>
       </div>
     </div>
@@ -131,6 +184,34 @@
         const name = document.getElementById('name').value;
         
         alert(`Thank you, ${name}! You are now connected to the Khoisan Voice Wi-Fi network. Feel free to use our chatbot to learn more about the Khoisan mandate.`);
+        
+        // Trigger the chatbot to open after successful connection
+        setTimeout(() => {
+          if (window.KhoisanChatbot) {
+            // Open the chat window
+            window.KhoisanChatbot.toggleChat();
+            
+            // Suggest a starter question after a brief delay
+            setTimeout(() => {
+              // Add a system message suggesting topics
+              const chatMessages = document.getElementById('chat-messages');
+              if (chatMessages) {
+                const suggestionMessage = document.createElement('div');
+                suggestionMessage.classList.add('chat-message', 'bot-message');
+                
+                const messageContent = document.createElement('div');
+                messageContent.classList.add('message-content');
+                messageContent.textContent = "You can ask me about any aspect of the Khoisan mandate. For example, 'What forms of financial reparation are being sought?' or 'Tell me about land sovereignty.'";
+                
+                suggestionMessage.appendChild(messageContent);
+                chatMessages.appendChild(suggestionMessage);
+                
+                // Auto-scroll to the bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+              }
+            }, 1000);
+          }
+        }, 1000);
       });
     </script>
   </body>
