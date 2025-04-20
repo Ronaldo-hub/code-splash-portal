@@ -1,4 +1,3 @@
-
 // Configuration for external APIs - In production, use environment variables
 
 // OpenRouter Configuration
@@ -25,6 +24,15 @@ interface XApiConfig {
   accessTokenSecret: string;
   bearerToken: string;
   baseUrl: string;
+}
+
+// Hugging Face API Configuration
+interface HuggingFaceConfig {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  maxNewTokens: number;
+  temperature: number;
 }
 
 // Default configurations with your API keys
@@ -164,13 +172,46 @@ export const setXApiCredentials = (
   xApiConfig.bearerToken = bearerToken;
 };
 
+// Add a function to set Hugging Face credentials
+export const setHuggingFaceCredentials = (
+  apiKey: string,
+  model?: string,
+  temperature?: number,
+  maxNewTokens?: number
+) => {
+  // Validate API key before setting
+  if (!apiKey || apiKey.trim() === "") {
+    console.error("Invalid Hugging Face API key");
+    throw new Error("API key cannot be empty");
+  }
+  
+  // Trim whitespace to avoid common errors
+  const trimmedKey = apiKey.trim();
+  console.log(`Setting Hugging Face API key: ${trimmedKey.substring(0, 10)}... (length: ${trimmedKey.length})`);
+  
+  huggingFaceConfig.apiKey = trimmedKey;
+  if (model) huggingFaceConfig.model = model;
+  if (temperature !== undefined) huggingFaceConfig.temperature = temperature;
+  if (maxNewTokens) huggingFaceConfig.maxNewTokens = maxNewTokens;
+};
+
+// Hugging Face API configuration
+export const huggingFaceConfig: HuggingFaceConfig = {
+  apiKey: '', // You'll need to set this 
+  baseUrl: 'https://api-inference.huggingface.co/models/',
+  model: 'distilbert-base-uncased-finetuned-sst-2-english', // Example model, replace with your preferred model
+  maxNewTokens: 150,
+  temperature: 0.7
+};
+
 // Export all configurations for easy access
 export const getAllConfigurations = () => {
   return {
     openRouter: openRouterConfig,
     xApi: xApiConfig,
     website: websiteConfig,
-    rag: ragConfig
+    rag: ragConfig,
+    huggingFace: huggingFaceConfig
   };
 };
 
@@ -179,6 +220,7 @@ export const saveConfigurationsToStorage = () => {
   try {
     localStorage.setItem('openRouterConfig', JSON.stringify(openRouterConfig));
     localStorage.setItem('xApiConfig', JSON.stringify(xApiConfig));
+    localStorage.setItem('huggingFaceConfig', JSON.stringify(huggingFaceConfig));
     console.log("Configurations saved to localStorage");
     return true;
   } catch (error) {
@@ -192,6 +234,7 @@ export const loadConfigurationsFromStorage = () => {
   try {
     const savedOpenRouterConfig = localStorage.getItem('openRouterConfig');
     const savedXApiConfig = localStorage.getItem('xApiConfig');
+    const savedHuggingFaceConfig = localStorage.getItem('huggingFaceConfig');
     
     if (savedOpenRouterConfig) {
       const parsedConfig = JSON.parse(savedOpenRouterConfig);
@@ -209,6 +252,16 @@ export const loadConfigurationsFromStorage = () => {
       xApiConfig.accessToken = parsedConfig.accessToken || xApiConfig.accessToken;
       xApiConfig.accessTokenSecret = parsedConfig.accessTokenSecret || xApiConfig.accessTokenSecret;
       xApiConfig.bearerToken = parsedConfig.bearerToken || xApiConfig.bearerToken;
+    }
+    
+    if (savedHuggingFaceConfig) {
+      const parsedConfig = JSON.parse(savedHuggingFaceConfig);
+      huggingFaceConfig.apiKey = parsedConfig.apiKey || huggingFaceConfig.apiKey;
+      huggingFaceConfig.model = parsedConfig.model || huggingFaceConfig.model;
+      huggingFaceConfig.temperature = parsedConfig.temperature || huggingFaceConfig.temperature;
+      huggingFaceConfig.maxNewTokens = parsedConfig.maxNewTokens || huggingFaceConfig.maxNewTokens;
+      
+      console.log(`Loaded Hugging Face API key from storage: ${huggingFaceConfig.apiKey.substring(0, 10)}... (length: ${huggingFaceConfig.apiKey.length})`);
     }
     
     return true;

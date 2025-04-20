@@ -1,4 +1,3 @@
-
 import { pipeline, env } from "@huggingface/transformers";
 import { toast } from "sonner";
 import { DocumentWithSource } from "./types/ragTypes";
@@ -14,6 +13,8 @@ const RETRY_DELAY_MS = 2000;
 
 export interface DocumentChunk extends DocumentWithSource {
   embedding?: number[];
+  id?: string;
+  date?: string;
 }
 
 class VectorDatabase {
@@ -105,6 +106,10 @@ class VectorDatabase {
             return;
           }
 
+          // Ensure id and date are set if not provided
+          doc.id = doc.id || `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          doc.date = doc.date || new Date().toISOString();
+          
           try {
             // Create embedding for the document text
             const result = await this.embeddingPipeline(doc.text, {
@@ -146,6 +151,10 @@ class VectorDatabase {
     return this.documents.length;
   }
 
+  public getAllDocuments(): DocumentChunk[] {
+    return this.documents;
+  }
+
   public async similaritySearch(query: string, k: number = 3): Promise<DocumentWithSource[]> {
     if (this.documents.length === 0) {
       console.warn("No documents in vector database for similarity search");
@@ -184,7 +193,7 @@ class VectorDatabase {
       similarities.sort((a, b) => b.similarity - a.similarity);
       const topK = similarities.slice(0, k);
 
-      // Return the top k documents
+      // Return documents with id and date
       return topK.map(({ index }) => {
         const { id, text, source, date } = this.documents[index];
         return { id, text, source, date };
